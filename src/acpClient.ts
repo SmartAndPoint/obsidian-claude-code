@@ -101,30 +101,59 @@ export class ObsidianAcpClient implements acp.Client {
     return { content: "" };
   }
 
-  async connect(workingDirectory: string): Promise<void> {
+  async connect(workingDirectory: string, apiKey?: string): Promise<void> {
     try {
       // Find claude-code-acp binary
       const acpPath = findClaudeCodeAcp();
       console.log(`[ACP] Using binary: ${acpPath}`);
 
+      // Check for API key
+      const anthropicKey = apiKey || process.env.ANTHROPIC_API_KEY;
+      if (!anthropicKey) {
+        console.warn("[ACP] Warning: ANTHROPIC_API_KEY not found in environment");
+      } else {
+        console.log("[ACP] API key found");
+      }
+
       // Spawn claude-code-acp process
       this.process = spawn(acpPath, [], {
-        stdio: ["pipe", "pipe", "inherit"],
+        stdio: ["pipe", "pipe", "pipe"], // capture stderr too
+        cwd: workingDirectory,
         env: {
           ...process.env,
-          // ANTHROPIC_API_KEY should be set in environment
+          ANTHROPIC_API_KEY: anthropicKey,
+          // Ensure PATH includes common binary locations
+          PATH: `${process.env.PATH || ""}:/opt/homebrew/bin:/usr/local/bin`,
         },
+      });
+
+      // Log process events
+      this.process.on("error", (err) => {
+        console.error("[ACP] Process error:", err);
+        this.events.onError(err);
+      });
+
+      this.process.on("exit", (code, signal) => {
+        console.log(`[ACP] Process exited: code=${code}, signal=${signal}`);
+      });
+
+      this.process.stderr?.on("data", (data: Buffer) => {
+        console.log("[ACP stderr]", data.toString());
       });
 
       if (!this.process.stdin || !this.process.stdout) {
         throw new Error("Failed to get process streams");
       }
 
+      console.log("[ACP] Process spawned, creating connection...");
+
       const input = Writable.toWeb(this.process.stdin);
       const output = Readable.toWeb(this.process.stdout) as ReadableStream<Uint8Array>;
 
       const stream = acp.ndJsonStream(input, output);
       this.connection = new acp.ClientSideConnection((_agent) => this, stream);
+
+      console.log("[ACP] Initializing connection...");
 
       // Initialize connection
       const initResult = await this.connection.initialize({
