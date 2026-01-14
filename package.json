@@ -1,0 +1,33 @@
+{
+  "name": "obsidian-claude-code",
+  "version": "0.1.0",
+  "description": "Claude Code integration for Obsidian via ACP (Agent Client Protocol)",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "node esbuild.config.mjs production",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit",
+    "test:headless": "npx tsx tests/headless-test.ts"
+  },
+  "keywords": [
+    "obsidian",
+    "claude",
+    "acp",
+    "ai",
+    "agent"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "builtin-modules": "^3.3.0",
+    "esbuild": "^0.20.0",
+    "obsidian": "^1.5.7",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@agentclientprotocol/sdk": "^0.13.0"
+  }
+}
