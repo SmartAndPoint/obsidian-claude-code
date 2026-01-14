@@ -99,15 +99,33 @@ npm run typecheck
 npm run test:headless
 ```
 
+## Releasing
+
+Version bump and release:
+
+```bash
+# Bump version (patch/minor/major)
+npm run version patch
+
+# Commit and tag
+git add package.json manifest.json
+git commit -m "Bump version to X.Y.Z"
+git tag X.Y.Z
+git push && git push --tags
+```
+
+GitHub Actions will automatically build and create a release with the plugin files.
+
 ## Roadmap
 
 - [x] Phase 1: Project structure
 - [x] Phase 2: ACP connection
 - [x] Phase 3: Basic Chat UI
+- [x] Phase 7: GitHub Actions release
 - [ ] Phase 4: Tool calls & permission UI
 - [ ] Phase 5: Vault integration (@-mentions)
 - [ ] Phase 6: Settings
-- [ ] Phase 7: Advanced features (MCP, slash commands)
+- [ ] Phase 8: Advanced features (MCP, slash commands)
 
 See [PLAN.md](./PLAN.md) for detailed implementation plan.
 

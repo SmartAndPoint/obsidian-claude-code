@@ -6,9 +6,9 @@
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "node esbuild.config.mjs production",
-    "lint": "eslint src/",
     "typecheck": "tsc --noEmit",
-    "test:headless": "npx tsx tests/headless-test.ts"
+    "test:headless": "npx tsx tests/headless-test.ts",
+    "version": "node version.mjs"
   },
   "keywords": [
     "obsidian",

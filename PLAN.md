@@ -1,14 +1,14 @@
-# PLAN.md — План разработки Obsidian Claude Code Plugin
+# PLAN.md — Obsidian Claude Code Plugin Development Plan
 
-## Phase 1: Базовая структура плагина ✅ COMPLETED
+## Phase 1: Project Structure ✅ COMPLETED
 
-### 1.1 Инициализация проекта
-- [x] Создать структуру Obsidian плагина (package.json, manifest.json, tsconfig.json)
-- [x] Настроить esbuild для сборки
-- [x] Создать базовый main.ts с регистрацией плагина
-- [x] Добавить hot-reload для разработки (npm run dev)
+### 1.1 Project Initialization
+- [x] Create Obsidian plugin structure (package.json, manifest.json, tsconfig.json)
+- [x] Configure esbuild for bundling
+- [x] Create main.ts with plugin registration
+- [x] Add hot-reload for development (npm run dev)
 
-### 1.2 Зависимости
+### 1.2 Dependencies
 ```json
 {
   "dependencies": {
@@ -28,64 +28,64 @@
 ## Phase 2: ACP Connection ✅ COMPLETED
 
 ### 2.1 Spawn claude-code-acp
-- [x] Создать `src/acpClient.ts` — менеджер подключения
-- [x] Реализовать spawn child process для `claude-code-acp`
-- [x] Настроить JSON-RPC транспорт через stdio
-- [x] Обработка lifecycle: запуск при активации, graceful shutdown
+- [x] Create `src/acpClient.ts` — connection manager
+- [x] Implement spawn child process for `claude-code-acp`
+- [x] Configure JSON-RPC transport over stdio
+- [x] Handle lifecycle: start on activation, graceful shutdown
 
 ### 2.2 ClientSideConnection
-- [x] Инициализировать `ClientSideConnection` из SDK
-- [x] Реализовать обработку входящих сообщений от агента
-- [x] Реализовать отправку сообщений пользователя
-- [x] Обработка ошибок
+- [x] Initialize `ClientSideConnection` from SDK
+- [x] Implement incoming message handling from agent
+- [x] Implement user message sending
+- [x] Error handling
 
-### 2.3 Проверка подключения
-- [x] Команда в Command Palette: "Claude Code: Connect"
-- [x] Headless тест: `npm run test:headless` — PASSED ✅
-- [x] Логирование в консоль разработчика
+### 2.3 Connection Verification
+- [x] Command Palette: "Claude Code: Connect"
+- [x] Headless test: `npm run test:headless` — PASSED ✅
+- [x] Console logging for debugging
 
 ---
 
-## Phase 3: Минимальный Chat UI ✅ COMPLETED
+## Phase 3: Basic Chat UI ✅ COMPLETED
 
 ### 3.1 Chat View
-- [x] Создать кастомный View (`ChatView extends ItemView`)
-- [x] Регистрация view в плагине
-- [x] Команда "Claude Code: Open Chat"
-- [x] Базовая HTML/CSS структура чата
-- [x] Ribbon icon для быстрого доступа
+- [x] Create custom View (`ChatView extends ItemView`)
+- [x] Register view in plugin
+- [x] Command "Claude Code: Open Chat"
+- [x] Basic HTML/CSS chat structure
+- [x] Ribbon icon for quick access
 
 ### 3.2 Message Rendering
-- [x] Рендеринг markdown сообщений (Obsidian MarkdownRenderer)
-- [x] Отображение сообщений пользователя и агента
-- [x] Поддержка streaming (partial messages)
-- [x] Scroll to bottom при новых сообщениях
+- [x] Markdown message rendering (Obsidian MarkdownRenderer)
+- [x] Display user and assistant messages
+- [x] Streaming support (partial messages)
+- [x] Auto-scroll to bottom on new messages
 
 ### 3.3 Input
-- [x] Textarea для ввода сообщений
-- [x] Отправка по Enter (Shift+Enter для новой строки)
-- [x] Кнопка отправки
-- [x] Индикатор статуса (Disconnected/Connecting/Connected/Thinking)
+- [x] Textarea for message input
+- [x] Send on Enter (Shift+Enter for newline)
+- [x] Send button
+- [x] Status indicator (Disconnected/Connecting/Connected/Thinking)
 
 ---
 
 ## Phase 4: Tool Calls & Permissions
 
 ### 4.1 Permission Requests UI
-- [ ] Modal для подтверждения tool calls
-- [ ] Отображение: какой инструмент, какие параметры
-- [ ] Кнопки: Approve / Deny / Approve All
+- [ ] Modal for tool call confirmation
+- [ ] Display: which tool, what parameters
+- [ ] Buttons: Approve / Deny / Approve All
 - [ ] Timeout handling
 
 ### 4.2 Edit Review
-- [ ] Diff viewer для предлагаемых изменений файлов
-- [ ] Syntax highlighting (если возможно через Obsidian API)
-- [ ] Accept / Reject изменений
+- [ ] Diff viewer for proposed file changes
+- [ ] Syntax highlighting (if possible via Obsidian API)
+- [ ] Accept / Reject changes
 - [ ] Batch operations
 
 ### 4.3 Terminal Output
-- [ ] Отображение stdout/stderr от команд
-- [ ] Различие interactive vs background terminals
+- [ ] Display stdout/stderr from commands
+- [ ] Distinguish interactive vs background terminals
 - [ ] Copy to clipboard
 
 ---
@@ -93,30 +93,30 @@
 ## Phase 5: Vault Integration
 
 ### 5.1 @-mentions
-- [ ] Autocomplete для файлов vault при вводе @
-- [ ] Fuzzy search по именам заметок
-- [ ] Добавление содержимого файла в контекст
+- [ ] Autocomplete for vault files when typing @
+- [ ] Fuzzy search by note names
+- [ ] Add file content to context
 
 ### 5.2 File Operations
-- [ ] Маппинг vault path ↔ ACP file system
-- [ ] Чтение файлов через Obsidian API (vault.read)
-- [ ] Запись файлов через Obsidian API (vault.modify/create)
-- [ ] Учёт .obsidian и других системных папок
+- [ ] Map vault path ↔ ACP file system
+- [ ] Read files via Obsidian API (vault.read)
+- [ ] Write files via Obsidian API (vault.modify/create)
+- [ ] Handle .obsidian and other system folders
 
 ### 5.3 Obsidian-specific Context
 - [ ] Frontmatter parsing
 - [ ] Wikilinks resolution
 - [ ] Tags extraction
-- [ ] Возможно: граф связей (backlinks)
+- [ ] Possibly: backlinks graph
 
 ---
 
 ## Phase 6: Settings & Configuration
 
 ### 6.1 Plugin Settings
-- [ ] Settings tab в Obsidian
-- [ ] Путь к claude-code-acp (если не глобальный)
-- [ ] ANTHROPIC_API_KEY (или использовать из env)
+- [ ] Settings tab in Obsidian
+- [ ] Path to claude-code-acp (if not global)
+- [ ] ANTHROPIC_API_KEY (or use from env)
 - [ ] Default model selection
 - [ ] Auto-connect on startup
 
@@ -127,44 +127,62 @@
 
 ---
 
-## Phase 7: Advanced Features (Future)
+## Phase 7: Distribution & Release ✅ COMPLETED
 
-### 7.1 Custom Slash Commands
-- [ ] Регистрация кастомных команд
-- [ ] Интеграция с Obsidian templates
+### 7.1 GitHub Actions Release
+- [x] Create `.github/workflows/release.yml`
+- [x] Auto-build on version tag push
+- [x] Generate release with main.js, manifest.json, styles.css
+- [x] Version bump script
 
-### 7.2 Multi-conversation
-- [ ] Несколько параллельных чатов
-- [ ] История разговоров
+### 7.2 Installation Methods
+- [x] Manual: download from GitHub Releases
+- [ ] BRAT: add repository URL for beta testing
+- [ ] Community Plugins: submit to Obsidian plugin directory (future)
 
-### 7.3 MCP Integration
-- [ ] Клиентские MCP серверы через ACP
-- [ ] Obsidian-specific MCP server (теги, граф, поиск)
+---
+
+## Phase 8: Advanced Features (Future)
+
+### 8.1 Custom Slash Commands
+- [ ] Register custom commands
+- [ ] Obsidian templates integration
+
+### 8.2 Multi-conversation
+- [ ] Multiple parallel chats
+- [ ] Conversation history
+
+### 8.3 MCP Integration
+- [ ] Client MCP servers via ACP
+- [ ] Obsidian-specific MCP server (tags, graph, search)
 
 ---
 
 ## Implementation Order
 
 ```
-Phase 1 (Foundation)
+Phase 1 (Foundation) ✅
     │
     ▼
-Phase 2 (ACP Connection) ──── Первый milestone: подключение работает
+Phase 2 (ACP Connection) ✅ ──── Milestone: connection works
     │
     ▼
-Phase 3 (Basic Chat) ──────── Второй milestone: можно общаться
+Phase 3 (Basic Chat) ✅ ──────── Milestone: can chat
     │
     ▼
-Phase 4 (Tool Calls) ──────── Третий milestone: agentic workflow
+Phase 7 (Distribution) ✅ ────── Milestone: installable release
     │
     ▼
-Phase 5 (Vault) ───────────── Четвёртый milestone: интеграция с заметками
+Phase 4 (Tool Calls) ─────────── Milestone: agentic workflow
     │
     ▼
-Phase 6 (Settings) ────────── Пятый milestone: production-ready
+Phase 5 (Vault) ──────────────── Milestone: notes integration
     │
     ▼
-Phase 7 (Advanced) ────────── Future iterations
+Phase 6 (Settings) ───────────── Milestone: production-ready
+    │
+    ▼
+Phase 8 (Advanced) ───────────── Future iterations
 ```
 
 ---
@@ -173,22 +191,23 @@ Phase 7 (Advanced) ────────── Future iterations
 
 | Risk | Mitigation |
 |------|------------|
-| Obsidian API ограничен для сложного UI | Использовать React через `createRoot` (поддерживается) |
-| stdio transport в Electron | Node.js доступен, child_process работает |
-| ACP SDK может измениться | Зафиксировать версию, следить за breaking changes |
-| Большие файлы vault | Streaming, pagination, lazy loading |
+| Obsidian API limited for complex UI | Use React via `createRoot` (supported) |
+| stdio transport in Electron | Node.js available, child_process works |
+| ACP SDK may change | Pin version, watch for breaking changes |
+| Large vault files | Streaming, pagination, lazy loading |
 
 ---
 
 ## Current Status
 
-✅ **Phase 1-3 COMPLETED** — Плагин готов к тестированию в Obsidian
+✅ **Phase 1-3, 7 COMPLETED** — Plugin ready for testing and distribution
 
-**Что работает:**
-- ACP подключение к claude-code-acp (headless тест пройден)
-- Chat UI с markdown рендерингом
-- Streaming ответов
-- Статус индикатор
-- Ribbon icon и команды
+**What works:**
+- ACP connection to claude-code-acp (headless test passed)
+- Chat UI with markdown rendering
+- Streaming responses
+- Status indicator
+- Ribbon icon and commands
+- GitHub Actions release workflow
 
-**Next Step**: Phase 4 — Tool Calls & Permissions (или тест в Obsidian)
+**Next Step**: Phase 4 — Tool Calls & Permissions
