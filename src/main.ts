@@ -1,7 +1,6 @@
 import { Plugin, Notice, WorkspaceLeaf } from "obsidian";
 import { ObsidianAcpClient, AcpClientEvents } from "./acpClient";
 import { ChatView, CHAT_VIEW_TYPE } from "./views/ChatView";
-import { PermissionModal } from "./components";
 
 export default class ClaudeCodePlugin extends Plugin {
   private acpClient: ObsidianAcpClient | null = null;
@@ -45,13 +44,19 @@ export default class ClaudeCodePlugin extends Plugin {
         this.chatView?.onPlan(plan);
       },
 
-      // Permission request with modal UI
+      // Permission request with inline card
       onPermissionRequest: async (params) => {
         console.log(`[Permission] ${params.toolCall.title}`);
 
-        // Show permission modal
-        const modal = new PermissionModal(this.app, params);
-        return await modal.waitForResponse();
+        // Use inline permission card in chat
+        if (this.chatView) {
+          return await this.chatView.onPermissionRequest(params);
+        }
+
+        // Fallback: auto-deny if no chat view
+        return {
+          outcome: { outcome: "cancelled" }
+        };
       },
 
       // Connection lifecycle

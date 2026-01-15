@@ -1,6 +1,6 @@
 import { spawn, ChildProcess } from "node:child_process";
 import { Writable, Readable } from "node:stream";
-import { existsSync } from "node:fs";
+import { existsSync, promises as fs } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import * as acp from "@agentclientprotocol/sdk";
@@ -135,17 +135,45 @@ export class ObsidianAcpClient implements acp.Client {
   async writeTextFile(
     params: acp.WriteTextFileRequest
   ): Promise<acp.WriteTextFileResponse> {
-    // Will be implemented with Obsidian vault integration
-    console.log("[ACP] writeTextFile:", params.path);
-    return {};
+    const filePath = params.path;
+    console.log("[ACP] writeTextFile:", filePath);
+
+    try {
+      await fs.writeFile(filePath, params.content, { encoding: "utf-8" });
+      console.log("[ACP] writeTextFile: success");
+      return {};
+    } catch (error) {
+      const err = error as NodeJS.ErrnoException;
+      console.error("[ACP] writeTextFile error:", err.message);
+      // Return empty response - ACP protocol doesn't have error field
+      // Agent will see the file wasn't written and can retry or report
+      return {};
+    }
   }
 
   async readTextFile(
     params: acp.ReadTextFileRequest
   ): Promise<acp.ReadTextFileResponse> {
-    // Will be implemented with Obsidian vault integration
-    console.log("[ACP] readTextFile:", params.path);
-    return { content: "" };
+    const filePath = params.path;
+    console.log("[ACP] readTextFile:", filePath);
+
+    try {
+      // Check if file exists first
+      if (!existsSync(filePath)) {
+        console.warn("[ACP] readTextFile: file not found:", filePath);
+        return { content: "" };
+      }
+
+      // Read file with UTF-8 encoding
+      const content = await fs.readFile(filePath, { encoding: "utf-8" });
+      console.log(`[ACP] readTextFile: success, ${content.length} chars`);
+      return { content };
+    } catch (error) {
+      const err = error as NodeJS.ErrnoException;
+      console.error("[ACP] readTextFile error:", err.message);
+      // Return empty content on error
+      return { content: "" };
+    }
   }
 
   async connect(workingDirectory: string, apiKey?: string): Promise<void> {

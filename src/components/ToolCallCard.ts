@@ -5,6 +5,8 @@
  */
 
 import type * as acp from "@agentclientprotocol/sdk";
+import { App } from "obsidian";
+import { CodeViewerModal } from "./CodeViewer";
 
 // Tool kind to icon mapping
 const TOOL_ICONS: Record<string, string> = {
@@ -26,21 +28,26 @@ const STATUS_ICONS: Record<string, string> = {
   failed: "❌",
 };
 
+const MAX_PREVIEW_LINES = 3;
+
 export class ToolCallCard {
   private container: HTMLElement;
   private statusEl: HTMLElement;
   private contentArea: HTMLElement;
   private toolCallId: string;
+  private app: App;
   private onViewDiff?: (diff: acp.Diff) => void;
 
   constructor(
     parent: HTMLElement,
     toolCall: acp.ToolCall & { sessionUpdate: "tool_call" },
+    app: App,
     options?: {
       onViewDiff?: (diff: acp.Diff) => void;
     }
   ) {
     this.toolCallId = toolCall.toolCallId ?? "unknown";
+    this.app = app;
     this.onViewDiff = options?.onViewDiff;
 
     this.container = parent.createDiv({ cls: "tool-card" });
@@ -193,8 +200,24 @@ export class ToolCallCard {
     // Content.content is a single ContentBlock, not an array
     const block = content.content;
     if (block && block.type === "text") {
-      const textEl = textContainer.createDiv();
-      textEl.setText(block.text ?? "");
+      const fullText = block.text ?? "";
+      const lines = fullText.split("\n");
+
+      // CLI-style: show summary instead of full content
+      const summaryEl = textContainer.createDiv({ cls: "tool-output-summary" });
+      summaryEl.setText(`⎿  ${lines.length} lines`);
+
+      // Only show "View" link if there's actual content
+      if (lines.length > 0 && fullText.trim()) {
+        const viewLink = textContainer.createEl("a", { cls: "tool-output-link" });
+        viewLink.setText("View output");
+        viewLink.href = "#";
+        viewLink.addEventListener("click", (e) => {
+          e.preventDefault();
+          const modal = new CodeViewerModal(this.app, fullText, "Tool Output");
+          modal.open();
+        });
+      }
     }
   }
 

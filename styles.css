@@ -66,21 +66,96 @@
   background: var(--background-modifier-hover);
 }
 
+/* Copy all chat button */
+.chat-copy-all-btn {
+  padding: 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.chat-copy-all-btn:hover {
+  background: var(--background-modifier-hover);
+}
+
 /* Messages */
 .chat-messages {
   flex-grow: 1;
   overflow-y: auto;
   padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  display: block; /* Changed from flex to block for simpler layout */
+}
+
+/* All direct children stack vertically */
+.chat-messages > * {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 12px;
 }
 
 .message {
-  max-width: 85%;
+  max-width: 95%;
   padding: 12px 16px;
   border-radius: 12px;
   line-height: 1.5;
+  overflow-x: auto;
+  overflow-y: hidden;
+  display: block;
+  position: relative;
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+}
+
+/* Copy button for messages */
+.message-copy-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: var(--background-modifier-hover);
+  border: 1px solid var(--background-modifier-border);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+  font-size: 12px;
+  z-index: 10;
+}
+
+.message:hover .message-copy-btn {
+  opacity: 1;
+}
+
+.message-copy-btn:hover {
+  background: var(--background-modifier-border);
+}
+
+/* Ensure markdown content doesn't break layout */
+.message > * {
+  display: block;
+  max-width: 100%;
+}
+
+/* Tables in messages */
+.message table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 8px 0;
+  font-size: 13px;
+}
+
+.message th,
+.message td {
+  border: 1px solid var(--background-modifier-border);
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.message th {
+  background: var(--background-secondary-alt);
 }
 
 .message p:first-child {
@@ -92,20 +167,57 @@
 }
 
 .message-user {
-  align-self: flex-end;
+  margin-left: auto; /* Push to right side */
   background: var(--interactive-accent);
   color: var(--text-on-accent);
   border-bottom-right-radius: 4px;
 }
 
 .message-assistant {
-  align-self: flex-start;
+  margin-right: auto; /* Push to left side */
   background: var(--background-secondary);
   border-bottom-left-radius: 4px;
+  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .message-streaming {
   border-left: 3px solid var(--interactive-accent);
+}
+
+/* Streaming text (plain text during generation) */
+.streaming-text {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  display: block;
+  width: 100%;
+}
+
+/* Message content container */
+.message-content {
+  display: block;
+  width: 100%;
+}
+
+/* Reset any Obsidian markdown styles that might conflict */
+.message-assistant .markdown-rendered,
+.message-content .markdown-rendered {
+  display: block;
+  width: 100%;
+}
+
+.message-assistant .markdown-rendered > *,
+.message-content .markdown-rendered > * {
+  display: block;
+  max-width: 100%;
 }
 
 /* Code blocks in messages */
@@ -181,6 +293,9 @@
   border: 1px solid var(--background-modifier-border);
   margin: 8px 0;
   overflow: hidden;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .thinking-header {
@@ -236,6 +351,9 @@
   border: 1px solid var(--background-modifier-border);
   margin: 8px 0;
   overflow: hidden;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .tool-card-header {
@@ -402,6 +520,29 @@
   font-size: 11px;
   padding: 4px 8px;
   margin-top: 4px;
+}
+
+/* Tool Card - Text Output (CLI-style collapsed) */
+.tool-card-text {
+  padding: 4px 12px 8px;
+}
+
+.tool-output-summary {
+  font-family: var(--font-monospace);
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.tool-output-link {
+  font-size: 11px;
+  color: var(--text-accent);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.tool-output-link:hover {
+  text-decoration: underline;
 }
 
 .terminal-exit.exit-success {
@@ -641,4 +782,228 @@
 
 .plan-entry-failed {
   background: rgba(255, 82, 82, 0.1);
+}
+
+/* ===== Inline Permission Card ===== */
+.permission-card {
+  background: var(--background-secondary);
+  border-radius: 8px;
+  border: 2px solid var(--text-warning);
+  margin: 8px 0;
+  overflow: hidden;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.permission-card-resolved {
+  border-color: var(--background-modifier-border);
+  opacity: 0.8;
+}
+
+.permission-card-header {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  gap: 8px;
+  background: rgba(255, 193, 7, 0.15);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.permission-card-icon {
+  font-size: 16px;
+}
+
+.permission-card-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-warning);
+}
+
+.permission-card-content {
+  padding: 12px;
+}
+
+.permission-card-tool {
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.permission-card-paths {
+  margin: 8px 0;
+}
+
+.permission-card-path {
+  font-family: var(--font-monospace);
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 2px 0;
+}
+
+.permission-card-command {
+  margin: 8px 0;
+}
+
+.permission-card-command code {
+  display: block;
+  background: var(--background-primary);
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-accent);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.permission-card-buttons {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary-alt);
+}
+
+.permission-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+}
+
+.permission-btn-reject {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+}
+
+.permission-btn-reject:hover {
+  background: var(--background-modifier-border);
+}
+
+.permission-btn-allow {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.permission-btn-allow:hover {
+  opacity: 0.9;
+}
+
+.permission-btn-allow-always {
+  background: transparent;
+  color: var(--interactive-accent);
+  border: 1px solid var(--interactive-accent);
+}
+
+.permission-btn-allow-always:hover {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.permission-card-status {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 4px 0;
+}
+
+.permission-card-status.status-allowed {
+  color: var(--text-success);
+}
+
+.permission-card-status.status-denied {
+  color: var(--text-error);
+}
+
+/* ===== Collapsed Code Blocks ===== */
+.collapsed-code-block {
+  background: var(--background-primary);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 8px 0;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.collapsed-code-preview {
+  font-family: var(--font-monospace);
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.collapsed-code-info {
+  color: var(--text-faint);
+  font-size: 10px;
+}
+
+.collapsed-code-link {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-accent);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.collapsed-code-link:hover {
+  text-decoration: underline;
+}
+
+/* ===== Code Viewer Modal ===== */
+.code-viewer-modal {
+  width: 80vw;
+  max-width: 900px;
+  height: 70vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.code-viewer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  margin-bottom: 12px;
+}
+
+.code-viewer-header h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.code-viewer-copy {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 4px;
+  background: var(--background-modifier-hover);
+  border: 1px solid var(--background-modifier-border);
+  cursor: pointer;
+}
+
+.code-viewer-copy:hover {
+  background: var(--background-modifier-border);
+}
+
+.code-viewer-content {
+  flex-grow: 1;
+  overflow: auto;
+  background: var(--background-primary);
+  border-radius: 6px;
+  padding: 12px;
+  margin: 0;
+  font-family: var(--font-monospace);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.code-viewer-content code {
+  background: transparent;
+  padding: 0;
 }
