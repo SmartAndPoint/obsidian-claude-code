@@ -17,3 +17,4 @@ export { PermissionCard } from "./PermissionCard";
 export { CodeViewerModal, collapseCodeBlocks } from "./CodeViewer";
 export { FileSuggest, resolveFileReferences } from "./FileSuggest";
 export { SelectionChipsContainer, type FileSelection } from "./SelectionChip";
+export { formatPath, createClickablePath, formatAgentPaths, openFileAtLine } from "./PathFormatter";

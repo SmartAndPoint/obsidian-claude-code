@@ -7,6 +7,7 @@
 import type * as acp from "@agentclientprotocol/sdk";
 import { App } from "obsidian";
 import { CodeViewerModal } from "./CodeViewer";
+import { createClickablePath, formatPath } from "./PathFormatter";
 
 // Tool kind to icon mapping
 const TOOL_ICONS: Record<string, string> = {
@@ -67,12 +68,15 @@ export class ToolCallCard {
     this.statusEl = header.createSpan({ cls: "tool-card-status" });
     this.updateStatus(toolCall.status ?? "pending");
 
-    // Details (file path, command, etc.)
+    // Details (file path, command, etc.) - with clickable vault paths
     if (toolCall.locations && toolCall.locations.length > 0) {
       const details = this.container.createDiv({ cls: "tool-card-details" });
       for (const loc of toolCall.locations) {
-        const pathEl = details.createDiv({ cls: "tool-card-path" });
-        pathEl.setText(loc.path + (loc.line ? `:${loc.line}` : ""));
+        const pathContainer = details.createDiv({ cls: "tool-card-path" });
+        // Build full path with line number if present
+        const fullPath = loc.path + (loc.line ? `:${loc.line}` : "");
+        // Create clickable path element
+        createClickablePath(this.app, pathContainer, fullPath, { cls: "tool-path-link" });
       }
     }
 
@@ -133,9 +137,13 @@ export class ToolCallCard {
   private renderDiff(diff: acp.Diff & { type: "diff" }): void {
     const diffContainer = this.contentArea.createDiv({ cls: "tool-card-diff" });
 
-    // Diff header
+    // Diff header - with clickable path
     const diffHeader = diffContainer.createDiv({ cls: "diff-header" });
-    diffHeader.setText(`${diff.path ?? "file"}`);
+    if (diff.path) {
+      createClickablePath(this.app, diffHeader, diff.path, { cls: "diff-path-link" });
+    } else {
+      diffHeader.setText("file");
+    }
 
     // Simple diff display from oldText/newText
     const diffContent = diffContainer.createDiv({ cls: "diff-content" });

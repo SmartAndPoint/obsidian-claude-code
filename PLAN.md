@@ -450,14 +450,34 @@ Phase 8 (Advanced)
 ## Current Status
 
 ✅ **Phase 1-3, 7 COMPLETED** — Basic plugin working
+✅ **Phase 4 PARTIAL** — Agent UI components
+✅ **Phase 5 PARTIAL** — Vault integration started
 
-**What works:**
+**What works (v0.7.0):**
 - ACP connection to claude-code-acp
 - Basic chat with streaming
 - OAuth and API key authentication
 - GitHub Actions release workflow
+- Thinking blocks (collapsible)
+- Tool call cards with status
+- Permission cards (inline)
+- File insertion via `[[` syntax with fuzzy search
+- Code selection via `Cmd+Shift+.` with line markers
+- Drag & drop files from vault
+- Clickable `[[file]]` links in messages
+- Click on `[[file]] (lines X-Y)` opens file and selects lines
+- Display `@N` markers as readable `[[file]] (lines)` format
 
-**Next Step**: Phase 4 — Full Agent UI
-- Start with Thinking Block and Tool Call Cards
-- Then Permission Modal
-- Then Diff Viewer and Terminal Output
+**Next Steps (Priority Order):**
+
+### HIGH PRIORITY
+1. **Convert agent paths to [[file]] links** — When agent mentions `/full/path/file.md`, display as clickable `[[file]]`
+2. **Diff Viewer (Phase 4.6)** — Full diff viewing for file edits with accept/reject
+
+### MEDIUM PRIORITY
+3. **Settings Tab (Phase 6)** — Port config, hotkeys, UI preferences
+4. **File preview on hover** — Show content preview when hovering chips/links
+
+### LOW PRIORITY
+5. **Chat history (Phase 8.1)** — Save/load conversations
+6. **Agent Questions UI (Phase 4.8)** — Button-based answers

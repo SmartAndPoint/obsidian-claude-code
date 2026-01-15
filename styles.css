@@ -1162,3 +1162,48 @@
   border-color: var(--interactive-accent);
   background: var(--background-primary);
 }
+
+/* ===== Clickable Vault Paths ===== */
+
+.vault-path-clickable,
+.tool-path-link.vault-path-clickable,
+.diff-path-link.vault-path-clickable {
+  color: var(--text-accent);
+  cursor: pointer;
+  text-decoration: none;
+  border-radius: 3px;
+  padding: 1px 4px;
+  background: var(--background-modifier-hover);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.vault-path-clickable:hover,
+.tool-path-link.vault-path-clickable:hover,
+.diff-path-link.vault-path-clickable:hover {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  text-decoration: none;
+}
+
+.vault-path-missing {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.9em;
+  opacity: 0.7;
+}
+
+/* Tool card path styling */
+.tool-card-path {
+  padding: 2px 0;
+}
+
+.tool-card-path .vault-path-clickable {
+  font-family: var(--font-monospace);
+  font-size: 12px;
+}
+
+/* Diff header path styling */
+.diff-header .vault-path-clickable {
+  font-family: var(--font-monospace);
+  font-size: 12px;
+}

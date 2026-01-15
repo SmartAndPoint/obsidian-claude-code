@@ -2,7 +2,7 @@ import { ItemView, WorkspaceLeaf, MarkdownRenderer, setIcon, MarkdownView } from
 import type ClaudeCodePlugin from "../main";
 import type * as acp from "@agentclientprotocol/sdk";
 import { TFile } from "obsidian";
-import { ThinkingBlock, ToolCallCard, PermissionCard, collapseCodeBlocks, FileSuggest, resolveFileReferences, SelectionChipsContainer } from "../components";
+import { ThinkingBlock, ToolCallCard, PermissionCard, collapseCodeBlocks, FileSuggest, resolveFileReferences, SelectionChipsContainer, formatAgentPaths } from "../components";
 
 export const CHAT_VIEW_TYPE = "claude-code-chat";
 
@@ -459,12 +459,15 @@ export class ChatView extends ItemView {
     const contentEl = this.currentStreamingEl.querySelector(".message-content") as HTMLElement;
     if (!contentEl) return;
 
+    // Format agent paths to [[file]] links before rendering
+    const formattedMessage = formatAgentPaths(this.app, this.currentAssistantMessage);
+
     // BMO pattern: Re-render entire accumulated message through temp container
     const tempContainer = document.createElement("div");
 
     MarkdownRenderer.render(
       this.app,
-      this.currentAssistantMessage,
+      formattedMessage,
       tempContainer,
       "",
       this
@@ -511,10 +514,15 @@ export class ChatView extends ItemView {
     // Content container
     const contentEl = messageEl.createDiv({ cls: "message-content" });
 
+    // Format content - convert agent paths for assistant messages
+    const displayContent = message.role === "assistant"
+      ? formatAgentPaths(this.app, message.content)
+      : message.content;
+
     // Render content with markdown
     MarkdownRenderer.render(
       this.app,
-      message.content,
+      displayContent,
       contentEl,
       "",
       this
