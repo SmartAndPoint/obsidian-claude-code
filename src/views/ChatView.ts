@@ -146,6 +146,9 @@ export class ChatView extends ItemView {
       }
     );
 
+    // Setup drag & drop for files
+    this.setupDropZone(inputRow);
+
     // Welcome message
     this.addMessage({
       role: "assistant",
@@ -625,5 +628,112 @@ export class ChatView extends ItemView {
 
     // Sync chip visibility
     this.selectionChips.syncVisibility(visibleIds);
+  }
+
+  // ===== Drag & Drop Methods =====
+
+  /**
+   * Setup drag & drop zone for files
+   */
+  private setupDropZone(dropZone: HTMLElement): void {
+    // Prevent default drag behavior
+    dropZone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropZone.addClass("drop-zone-active");
+    });
+
+    dropZone.addEventListener("dragleave", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropZone.removeClass("drop-zone-active");
+    });
+
+    dropZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropZone.removeClass("drop-zone-active");
+
+      const textData = e.dataTransfer?.getData("text/plain") ?? "";
+
+      // Try to find file by various path formats
+      let file: TFile | null = null;
+
+      // Parse obsidian:// URL format
+      // Example: obsidian://open?vault=tbank&file=RecSys%2FCanGen%20Store%2FNote
+      if (textData.startsWith("obsidian://")) {
+        try {
+          const url = new URL(textData);
+          const fileParam = url.searchParams.get("file");
+          if (fileParam) {
+            const filePath = decodeURIComponent(fileParam);
+            const abstractFile = this.app.vault.getAbstractFileByPath(filePath);
+            if (abstractFile instanceof TFile) {
+              file = abstractFile;
+            } else {
+              // Try with .md extension
+              const abstractFileMd = this.app.vault.getAbstractFileByPath(filePath + ".md");
+              if (abstractFileMd instanceof TFile) {
+                file = abstractFileMd;
+              }
+            }
+          }
+        } catch {
+          // Not a valid URL
+        }
+      }
+
+      // Fallback: try direct path
+      if (!file && textData && !textData.startsWith("obsidian://")) {
+        const abstractFile = this.app.vault.getAbstractFileByPath(textData);
+        if (abstractFile instanceof TFile) {
+          file = abstractFile;
+        }
+      }
+
+      if (file) {
+        this.addFile(file);
+        return;
+      }
+
+      // External file drops not supported
+      const files = e.dataTransfer?.files;
+      if (files && files.length > 0) {
+        console.log("[ChatView] External file drop not supported, use files from vault");
+      }
+    });
+  }
+
+  /**
+   * Add a file from drag & drop
+   */
+  addFile(file: TFile): void {
+    if (!this.selectionChips) return;
+
+    // Add chip and get ID
+    const id = this.selectionChips.addFile(file);
+
+    // Insert @N marker at cursor position in textarea
+    const cursorPos = this.textarea.selectionStart ?? this.textarea.value.length;
+    const before = this.textarea.value.slice(0, cursorPos);
+    const after = this.textarea.value.slice(cursorPos);
+
+    // Add space before if needed
+    const needsSpaceBefore = before.length > 0 && !before.endsWith(" ") && !before.endsWith("\n");
+    const needsSpaceAfter = after.length > 0 && !after.startsWith(" ") && !after.startsWith("\n");
+
+    const marker = `${needsSpaceBefore ? " " : ""}\`@${id}\`${needsSpaceAfter ? " " : ""}`;
+
+    this.textarea.value = before + marker + after;
+
+    // Move cursor after marker
+    const newPos = cursorPos + marker.length;
+    this.textarea.setSelectionRange(newPos, newPos);
+
+    // Focus textarea
+    this.textarea.focus();
+
+    // Trigger resize
+    this.textarea.dispatchEvent(new Event("input"));
   }
 }

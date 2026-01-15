@@ -1146,3 +1146,18 @@
 .selection-chip-remove:hover {
   color: var(--text-error);
 }
+
+/* ===== Drop Zone (Drag & Drop Files) ===== */
+
+.chat-input-row.drop-zone-active {
+  background: var(--background-modifier-hover);
+  border: 2px dashed var(--interactive-accent);
+  border-radius: 8px;
+  margin: 4px;
+  padding: 8px 12px;
+}
+
+.chat-input-row.drop-zone-active .chat-input {
+  border-color: var(--interactive-accent);
+  background: var(--background-primary);
+}

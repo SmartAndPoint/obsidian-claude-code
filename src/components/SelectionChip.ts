@@ -13,6 +13,7 @@ export interface FileSelection {
   startLine: number;
   endLine: number;
   text: string; // The actual selected text (for preview)
+  isFullFile?: boolean; // True if this is a dropped file (not a selection)
 }
 
 export class SelectionChipsContainer {
@@ -39,6 +40,28 @@ export class SelectionChipsContainer {
       startLine,
       endLine,
       text,
+    };
+
+    this.selections.set(id, selection);
+    this.renderChip(selection);
+    this.updateVisibility();
+
+    return id;
+  }
+
+  /**
+   * Add a full file (from drag & drop) and return its ID
+   */
+  addFile(file: TFile): number {
+    const id = this.nextId++;
+
+    const selection: FileSelection = {
+      id,
+      file,
+      startLine: 0,
+      endLine: 0,
+      text: file.path,
+      isFullFile: true,
     };
 
     this.selections.set(id, selection);
@@ -129,6 +152,13 @@ export class SelectionChipsContainer {
 
       if (selection) {
         const fullPath = `${vaultPath}/${selection.file.path}`;
+
+        // Full file - no line numbers
+        if (selection.isFullFile) {
+          return fullPath;
+        }
+
+        // Selection - include line numbers
         if (selection.startLine === selection.endLine) {
           return `${fullPath}:${selection.startLine}`;
         } else {
@@ -146,9 +176,9 @@ export class SelectionChipsContainer {
       attr: { "data-selection-id": String(selection.id) },
     });
 
-    // Icon
+    // Icon - different for full file vs selection
     const icon = chip.createSpan({ cls: "selection-chip-icon" });
-    icon.textContent = "📎";
+    icon.textContent = selection.isFullFile ? "📄" : "📎";
 
     // ID badge
     const badge = chip.createSpan({ cls: "selection-chip-badge" });
@@ -156,13 +186,19 @@ export class SelectionChipsContainer {
 
     // File info
     const info = chip.createSpan({ cls: "selection-chip-info" });
-    const lineInfo = selection.startLine === selection.endLine
-      ? `(${selection.startLine})`
-      : `(${selection.startLine}-${selection.endLine})`;
-    info.textContent = `${selection.file.name} ${lineInfo}`;
+    if (selection.isFullFile) {
+      info.textContent = selection.file.name;
+    } else {
+      const lineInfo = selection.startLine === selection.endLine
+        ? `(${selection.startLine})`
+        : `(${selection.startLine}-${selection.endLine})`;
+      info.textContent = `${selection.file.name} ${lineInfo}`;
+    }
 
     // Preview on hover (tooltip)
-    const preview = selection.text.slice(0, 100) + (selection.text.length > 100 ? "..." : "");
+    const preview = selection.isFullFile
+      ? selection.file.path
+      : selection.text.slice(0, 100) + (selection.text.length > 100 ? "..." : "");
     chip.setAttribute("title", preview);
 
     // Remove button
