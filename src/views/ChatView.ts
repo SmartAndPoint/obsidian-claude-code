@@ -1,7 +1,7 @@
 import { ItemView, WorkspaceLeaf, MarkdownRenderer, setIcon } from "obsidian";
 import type ClaudeCodePlugin from "../main";
 import type * as acp from "@agentclientprotocol/sdk";
-import { ThinkingBlock, ToolCallCard, PermissionCard, collapseCodeBlocks } from "../components";
+import { ThinkingBlock, ToolCallCard, PermissionCard, collapseCodeBlocks, FileSuggest, resolveFileReferences } from "../components";
 
 export const CHAT_VIEW_TYPE = "claude-code-chat";
 
@@ -39,6 +39,9 @@ export class ChatView extends ItemView {
 
   // Flag to add paragraph break after tool call
   private needsParagraphBreak: boolean = false;
+
+  // File suggestion for [[ syntax
+  private fileSuggest: FileSuggest | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: ClaudeCodePlugin) {
     super(leaf);
@@ -94,6 +97,10 @@ export class ChatView extends ItemView {
 
     this.textarea.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
+        // Don't send if file suggest is open (let it handle Enter)
+        if (this.fileSuggest?.isSuggestOpen()) {
+          return;
+        }
         e.preventDefault();
         this.handleSend();
       }
@@ -109,6 +116,17 @@ export class ChatView extends ItemView {
     setIcon(this.sendButton, "send");
     this.sendButton.addEventListener("click", () => this.handleSend());
 
+    // File suggestion for [[ syntax
+    this.fileSuggest = new FileSuggest(
+      this.app,
+      this.inputContainer,
+      this.textarea,
+      (path) => {
+        // Optional: could show a notification or log
+        console.log(`[FileSuggest] Selected: ${path}`);
+      }
+    );
+
     // Welcome message
     this.addMessage({
       role: "assistant",
@@ -123,6 +141,10 @@ export class ChatView extends ItemView {
       card.cancel();
     }
     this.activePermissionCards = [];
+
+    // Cleanup FileSuggest
+    this.fileSuggest?.destroy();
+    this.fileSuggest = null;
 
     // Cleanup
     this.toolCallCards.clear();
@@ -151,7 +173,7 @@ export class ChatView extends ItemView {
       return;
     }
 
-    // Add user message
+    // Add user message (show original with [[links]])
     this.addMessage({
       role: "user",
       content: text,
@@ -166,8 +188,11 @@ export class ChatView extends ItemView {
     this.resetStreamingState();
     this.updateStatus("thinking");
 
+    // Resolve [[file]] references to full paths before sending
+    const resolvedText = resolveFileReferences(text, this.app);
+
     try {
-      await this.plugin.sendMessage(text);
+      await this.plugin.sendMessage(resolvedText);
     } catch (error) {
       this.addMessage({
         role: "assistant",
