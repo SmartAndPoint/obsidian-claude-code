@@ -316,6 +316,13 @@ export class ChatView extends ItemView {
     // Mark that we need paragraph break after tool call
     this.needsParagraphBreak = true;
 
+    // Reset streaming element so next text appears AFTER the tool card
+    // This fixes the issue where text was appearing before tool cards
+    if (this.currentStreamingEl) {
+      this.currentStreamingEl.removeClass("message-streaming");
+      this.currentStreamingEl = null;
+    }
+
     // Create tool card
     const card = new ToolCallCard(this.messagesContainer, toolCall, this.app, {
       onViewDiff: (diff) => this.showDiffModal(diff),
@@ -621,7 +628,37 @@ export class ChatView extends ItemView {
   }
 
   private showDiffModal(diff: acp.Diff): void {
-    const modal = new DiffModal(this.app, diff);
+    const modal = new DiffModal(this.app, diff, {
+      onApply: async (newText: string) => {
+        // Apply changes directly via Obsidian API
+        if (diff.path) {
+          try {
+            // Get relative path from full path
+            const vaultPath = (this.app.vault.adapter as any).basePath as string;
+            let relativePath = diff.path;
+            if (vaultPath && diff.path.startsWith(vaultPath)) {
+              relativePath = diff.path.slice(vaultPath.length);
+              if (relativePath.startsWith('/')) {
+                relativePath = relativePath.slice(1);
+              }
+            }
+
+            const file = this.app.vault.getAbstractFileByPath(relativePath);
+            if (file instanceof TFile) {
+              await this.app.vault.modify(file, newText);
+              console.log(`[ChatView] Applied diff to ${relativePath}`);
+            } else {
+              console.error(`[ChatView] File not found: ${relativePath}`);
+            }
+          } catch (err) {
+            console.error("[ChatView] Failed to apply diff:", err);
+          }
+        }
+      },
+      onReject: () => {
+        console.log("[ChatView] Diff rejected");
+      }
+    });
     modal.open();
   }
 

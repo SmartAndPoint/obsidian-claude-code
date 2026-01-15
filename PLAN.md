@@ -478,7 +478,8 @@ Phase 8 (Advanced)
 ### MEDIUM PRIORITY
 3. **Settings Tab (Phase 6)** — Port config, hotkeys, UI preferences
 4. **File preview on hover** — Show content preview when hovering chips/links
+5. **Readable file markers** — Replace `@1` with `[[README]]` (first 6 chars of filename) in textarea
 
 ### LOW PRIORITY
-5. **Chat history (Phase 8.1)** — Save/load conversations
-6. **Agent Questions UI (Phase 4.8)** — Button-based answers
+6. **Chat history (Phase 8.1)** — Save/load conversations
+7. **Agent Questions UI (Phase 4.8)** — Button-based answers
