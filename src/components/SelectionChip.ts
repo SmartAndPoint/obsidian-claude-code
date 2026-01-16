@@ -23,8 +23,7 @@ export class SelectionChipsContainer {
   private onRemove: (id: number) => void;
 
   constructor(parent: HTMLElement, onRemove: (id: number) => void) {
-    this.container = parent.createDiv({ cls: "selection-chips-container" });
-    this.container.style.display = "none"; // Hidden when empty
+    this.container = parent.createDiv({ cls: "selection-chips-container is-hidden" });
     this.onRemove = onRemove;
   }
 
@@ -87,9 +86,9 @@ export class SelectionChipsContainer {
    * Hide a chip (but keep the selection for undo)
    */
   hideChip(id: number): void {
-    const chipEl = this.container.querySelector(`[data-selection-id="${id}"]`) as HTMLElement;
+    const chipEl = this.container.querySelector(`[data-selection-id="${id}"]`);
     if (chipEl) {
-      chipEl.style.display = "none";
+      chipEl.addClass("is-hidden");
     }
     this.updateVisibility();
   }
@@ -98,9 +97,9 @@ export class SelectionChipsContainer {
    * Show a hidden chip
    */
   showChip(id: number): void {
-    const chipEl = this.container.querySelector(`[data-selection-id="${id}"]`) as HTMLElement;
+    const chipEl = this.container.querySelector(`[data-selection-id="${id}"]`);
     if (chipEl) {
-      chipEl.style.display = "inline-flex";
+      chipEl.removeClass("is-hidden");
     }
     this.updateVisibility();
   }
@@ -238,12 +237,11 @@ export class SelectionChipsContainer {
   }
 
   private updateVisibility(): void {
-    // Check if any chips are actually visible
-    const visibleChips = this.container.querySelectorAll('.selection-chip[style*="inline-flex"], .selection-chip:not([style*="display"])');
+    // Check if any chips are actually visible (not having is-hidden class)
     const hasVisibleChips = Array.from(this.container.querySelectorAll('.selection-chip'))
-      .some(chip => (chip as HTMLElement).style.display !== 'none');
+      .some(chip => !chip.hasClass("is-hidden"));
 
-    this.container.style.display = hasVisibleChips ? "flex" : "none";
+    this.container.toggleClass("is-hidden", !hasVisibleChips);
   }
 
   destroy(): void {

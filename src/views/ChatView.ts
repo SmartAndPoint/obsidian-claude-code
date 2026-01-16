@@ -81,6 +81,7 @@ export class ChatView extends ItemView {
   }
 
   async onOpen(): Promise<void> {
+    await Promise.resolve(); // Required for Obsidian View interface
     const container = this.containerEl.children[1];
     container.empty();
     container.addClass("claude-code-chat");
@@ -158,7 +159,7 @@ export class ChatView extends ItemView {
       this.textarea,
       (path) => {
         // Optional: could show a notification or log
-        console.log(`[FileSuggest] Selected: ${path}`);
+        console.debug(`[FileSuggest] Selected: ${path}`);
       }
     );
 
@@ -174,6 +175,7 @@ export class ChatView extends ItemView {
   }
 
   async onClose(): Promise<void> {
+    await Promise.resolve(); // Required for Obsidian View interface
     // Cancel any pending permission requests
     for (const card of this.activePermissionCards) {
       card.cancel();
@@ -244,7 +246,7 @@ export class ChatView extends ItemView {
     this.updateStatus("thinking");
 
     // Get vault path for resolving files
-    const vaultPath = (this.app.vault.adapter as any).basePath;
+    const vaultPath = (this.app.vault.adapter as unknown as { basePath: string }).basePath;
 
     // Resolve [[file]] references to full paths (for agent)
     let resolvedText = resolveFileReferences(text, this.app);
@@ -361,7 +363,7 @@ export class ChatView extends ItemView {
     this.toolCallCards.set(toolCallId, card);
 
     // Track Edit tool calls by file path for batching
-    console.log(`[ChatView] onToolCall kind: ${toolCall.kind}, locations:`, toolCall.locations, `content:`, toolCall.content);
+    console.debug(`[ChatView] onToolCall kind: ${toolCall.kind}, locations:`, toolCall.locations, `content:`, toolCall.content);
     if (toolCall.kind === "edit" && toolCall.locations && toolCall.locations.length > 0) {
       const filePath = toolCall.locations[0].path;
       if (filePath) {
@@ -373,7 +375,7 @@ export class ChatView extends ItemView {
           toolCall,
           card,
         });
-        console.log(`[ChatView] Tracking Edit for ${filePath}, total: ${this.pendingEditsByFile.get(filePath)!.length}`);
+        console.debug(`[ChatView] Tracking Edit for ${filePath}, total: ${this.pendingEditsByFile.get(filePath)!.length}`);
       }
     }
 
@@ -385,7 +387,7 @@ export class ChatView extends ItemView {
    */
   onToolCallUpdate(update: acp.ToolCallUpdate & { sessionUpdate: "tool_call_update" }): void {
     const toolCallId = update.toolCallId ?? "";
-    console.log(`[ChatView] onToolCallUpdate:`, { toolCallId, status: update.status, content: update.content });
+    console.debug(`[ChatView] onToolCallUpdate:`, { toolCallId, status: update.status, content: update.content });
     const card = this.toolCallCards.get(toolCallId);
 
     if (card) {
@@ -410,7 +412,7 @@ export class ChatView extends ItemView {
       const idx = edits.findIndex(e => e.toolCallId === toolCallId);
       if (idx !== -1) {
         edits.splice(idx, 1);
-        console.log(`[ChatView] Removed Edit ${toolCallId} from ${filePath}, remaining: ${edits.length}`);
+        console.debug(`[ChatView] Removed Edit ${toolCallId} from ${filePath}, remaining: ${edits.length}`);
         if (edits.length === 0) {
           this.pendingEditsByFile.delete(filePath);
         }
@@ -481,12 +483,12 @@ export class ChatView extends ItemView {
     }
 
     // Debug: log full toolCall structure
-    console.log(`[ChatView] Permission toolCall full:`, JSON.stringify(toolCall, null, 2));
+    console.debug(`[ChatView] Permission toolCall full:`, JSON.stringify(toolCall, null, 2));
 
     // Check if this file was already approved in this session
     if (isEditPermission && filePath && this.autoApprovedFiles.has(filePath)) {
       const cachedResponse = this.autoApprovedFiles.get(filePath)!;
-      console.log(`[ChatView] Auto-approving edit for ${filePath}`);
+      console.debug(`[ChatView] Auto-approving edit for ${filePath}`);
       return cachedResponse;
     }
 
@@ -520,7 +522,7 @@ export class ChatView extends ItemView {
       },
     };
 
-    console.log(`[ChatView] Showing permission for ${filePath}: 1 of ${totalChanges}`);
+    console.debug(`[ChatView] Showing permission for ${filePath}: 1 of ${totalChanges}`);
 
     const card = new PermissionCard(this.messagesContainer, modifiedRequest);
     this.activePermissionCards.push(card);
@@ -542,7 +544,7 @@ export class ChatView extends ItemView {
 
     // If approved, store for auto-approve of subsequent edits
     if (isApproved) {
-      console.log(`[ChatView] Storing auto-approve for ${filePath}`);
+      console.debug(`[ChatView] Storing auto-approve for ${filePath}`);
       this.autoApprovedFiles.set(filePath, response);
     }
 
@@ -619,7 +621,7 @@ export class ChatView extends ItemView {
       copyBtn.setAttribute("aria-label", "Copy message");
       copyBtn.addEventListener("click", (e) => {
         e.stopPropagation();
-        this.copyToClipboard(this.currentAssistantMessage);
+        void this.copyToClipboard(this.currentAssistantMessage);
       });
 
       // Create a content block div
@@ -678,7 +680,7 @@ export class ChatView extends ItemView {
     copyBtn.setAttribute("aria-label", "Copy message");
     copyBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      this.copyToClipboard(message.content);
+      void this.copyToClipboard(message.content);
     });
 
     // Content container
@@ -713,7 +715,7 @@ export class ChatView extends ItemView {
     try {
       await navigator.clipboard.writeText(text);
       // Could add a toast notification here
-      console.log("[ChatView] Copied to clipboard");
+      console.debug("[ChatView] Copied to clipboard");
     } catch (err) {
       console.error("[ChatView] Failed to copy:", err);
     }
@@ -724,7 +726,7 @@ export class ChatView extends ItemView {
       .map((m) => `[${m.role.toUpperCase()}]\n${m.content}`)
       .join("\n\n---\n\n");
 
-    this.copyToClipboard(chatText);
+    void this.copyToClipboard(chatText);
   }
 
   private scrollToBottom(): void {
@@ -764,7 +766,7 @@ export class ChatView extends ItemView {
 
         if (file) {
           // Open the file
-          const leaf = await this.app.workspace.openLinkText(href, "", false);
+          await this.app.workspace.openLinkText(href, "", false);
 
           // If we have line info, scroll to and select those lines
           if (startLine !== null && endLine !== null) {
@@ -784,7 +786,7 @@ export class ChatView extends ItemView {
             }, 100);
           }
         } else {
-          console.log(`[ChatView] File not found: ${href}`);
+          console.debug(`[ChatView] File not found: ${href}`);
         }
       });
     });
@@ -797,7 +799,7 @@ export class ChatView extends ItemView {
         if (diff.path) {
           try {
             // Get relative path from full path
-            const vaultPath = (this.app.vault.adapter as any).basePath as string;
+            const vaultPath = (this.app.vault.adapter as unknown as { basePath: string }).basePath;
             let relativePath = diff.path;
             if (vaultPath && diff.path.startsWith(vaultPath)) {
               relativePath = diff.path.slice(vaultPath.length);
@@ -809,7 +811,7 @@ export class ChatView extends ItemView {
             const file = this.app.vault.getAbstractFileByPath(relativePath);
             if (file instanceof TFile) {
               await this.app.vault.modify(file, newText);
-              console.log(`[ChatView] Applied diff to ${relativePath}`);
+              console.debug(`[ChatView] Applied diff to ${relativePath}`);
             } else {
               console.error(`[ChatView] File not found: ${relativePath}`);
             }
@@ -819,7 +821,7 @@ export class ChatView extends ItemView {
         }
       },
       onReject: () => {
-        console.log("[ChatView] Diff rejected");
+        console.debug("[ChatView] Diff rejected");
       }
     });
     modal.open();
@@ -980,7 +982,7 @@ export class ChatView extends ItemView {
       // External file drops not supported
       const files = e.dataTransfer?.files;
       if (files && files.length > 0) {
-        console.log("[ChatView] External file drop not supported, use files from vault");
+        console.debug("[ChatView] External file drop not supported, use files from vault");
       }
     });
   }

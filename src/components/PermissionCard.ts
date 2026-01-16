@@ -7,14 +7,6 @@
 
 import type * as acp from "@agentclientprotocol/sdk";
 
-// Option kind to style mapping
-const OPTION_STYLES: Record<string, { icon: string; cls: string }> = {
-  allow_once: { icon: "✓", cls: "permission-allow" },
-  allow_always: { icon: "✓✓", cls: "permission-allow-always" },
-  reject_once: { icon: "✗", cls: "permission-reject" },
-  reject_always: { icon: "✗✗", cls: "permission-reject-always" },
-};
-
 export class PermissionCard {
   private container: HTMLElement;
   private resolvePromise: ((result: acp.RequestPermissionResponse) => void) | null = null;
@@ -45,7 +37,7 @@ export class PermissionCard {
     // Header
     const header = this.container.createDiv({ cls: "permission-card-header" });
     header.createSpan({ cls: "permission-card-icon" }).setText("⚠️");
-    header.createSpan({ cls: "permission-card-title" }).setText("Permission Required");
+    header.createSpan({ cls: "permission-card-title" }).setText("Permission required");
 
     // Content
     const content = this.container.createDiv({ cls: "permission-card-content" });
@@ -111,7 +103,7 @@ export class PermissionCard {
       const allowAlwaysBtn = buttons.createEl("button", {
         cls: "permission-btn permission-btn-allow-always"
       });
-      allowAlwaysBtn.setText("Always Allow");
+      allowAlwaysBtn.setText("Always allow");
       allowAlwaysBtn.addEventListener("click", () => this.handleChoice(allowAlways.optionId));
     }
   }

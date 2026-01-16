@@ -5,7 +5,7 @@
  * Active file appears first, results sorted by match score.
  */
 
-import { App, TFile, TFolder, TAbstractFile, prepareFuzzySearch, SearchResult } from "obsidian";
+import { App, TFolder, TAbstractFile, prepareFuzzySearch, SearchResult } from "obsidian";
 
 interface SuggestItem {
   file: TAbstractFile;
@@ -249,8 +249,8 @@ export class FileSuggest {
       pathEl.className = "file-suggest-path";
 
       if (item.match && item.match.matches) {
-        // Highlight matched characters
-        pathEl.innerHTML = this.highlightMatches(item.path, item.match.matches);
+        // Highlight matched characters using DOM API
+        this.appendHighlightedText(pathEl, item.path, item.match.matches);
       } else {
         pathEl.textContent = item.path;
       }
@@ -302,30 +302,29 @@ export class FileSuggest {
     this.dropdown.style.right = "16px";
   }
 
-  private highlightMatches(text: string, matches: [number, number][]): string {
-    let result = "";
+  /**
+   * Append text with highlighted matches to parent element using DOM API
+   */
+  private appendHighlightedText(parent: HTMLElement, text: string, matches: [number, number][]): void {
     let lastIndex = 0;
 
     for (const [start, end] of matches) {
       // Add text before match
-      result += this.escapeHtml(text.slice(lastIndex, start));
+      if (start > lastIndex) {
+        parent.appendChild(document.createTextNode(text.slice(lastIndex, start)));
+      }
       // Add highlighted match
-      result += `<span class="file-suggest-highlight">${this.escapeHtml(text.slice(start, end))}</span>`;
+      const highlightSpan = document.createElement("span");
+      highlightSpan.className = "file-suggest-highlight";
+      highlightSpan.textContent = text.slice(start, end);
+      parent.appendChild(highlightSpan);
       lastIndex = end;
     }
 
     // Add remaining text
-    result += this.escapeHtml(text.slice(lastIndex));
-
-    return result;
-  }
-
-  private escapeHtml(text: string): string {
-    return text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
+    if (lastIndex < text.length) {
+      parent.appendChild(document.createTextNode(text.slice(lastIndex)));
+    }
   }
 
   private selectNext(): void {
@@ -408,7 +407,7 @@ export function resolveFileReferences(
 
     if (file) {
       // Get full filesystem path
-      const vaultPath = (app.vault.adapter as any).basePath;
+      const vaultPath = (app.vault.adapter as unknown as { basePath: string }).basePath;
       return `${vaultPath}/${file.path}`;
     }
 

@@ -1,5 +1,10 @@
 /* Claude Code Chat Styles */
 
+/* ===== Utility Classes ===== */
+.is-hidden {
+  display: none !important;
+}
+
 .claude-code-chat {
   display: flex;
   flex-direction: column;

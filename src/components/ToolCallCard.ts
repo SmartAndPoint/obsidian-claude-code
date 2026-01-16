@@ -7,7 +7,7 @@
 import type * as acp from "@agentclientprotocol/sdk";
 import { App } from "obsidian";
 import { CodeViewerModal } from "./CodeViewer";
-import { createClickablePath, formatPath } from "./PathFormatter";
+import { createClickablePath } from "./PathFormatter";
 
 // Tool kind to icon mapping
 const TOOL_ICONS: Record<string, string> = {
@@ -28,8 +28,6 @@ const STATUS_ICONS: Record<string, string> = {
   completed: "✅",
   failed: "❌",
 };
-
-const MAX_PREVIEW_LINES = 3;
 
 export class ToolCallCard {
   private container: HTMLElement;
@@ -81,8 +79,7 @@ export class ToolCallCard {
     }
 
     // Content area (for diff, terminal output, etc.)
-    this.contentArea = this.container.createDiv({ cls: "tool-card-content" });
-    this.contentArea.style.display = "none";
+    this.contentArea = this.container.createDiv({ cls: "tool-card-content is-hidden" });
 
     // Render initial content if present
     if (toolCall.content && toolCall.content.length > 0) {
@@ -121,7 +118,7 @@ export class ToolCallCard {
 
   private renderContent(content: acp.ToolCallContent[]): void {
     this.contentArea.empty();
-    this.contentArea.style.display = "block";
+    this.contentArea.removeClass("is-hidden");
 
     for (const item of content) {
       if (item.type === "diff") {
@@ -182,7 +179,7 @@ export class ToolCallCard {
     if (this.onViewDiff) {
       const actions = diffContainer.createDiv({ cls: "diff-actions" });
       const viewBtn = actions.createEl("button", { cls: "diff-view-btn" });
-      viewBtn.setText("👁 View Full");
+      viewBtn.setText("👁 View full");
       viewBtn.addEventListener("click", () => {
         if (this.onViewDiff) {
           this.onViewDiff(diff);
@@ -222,7 +219,7 @@ export class ToolCallCard {
         viewLink.href = "#";
         viewLink.addEventListener("click", (e) => {
           e.preventDefault();
-          const modal = new CodeViewerModal(this.app, fullText, "Tool Output");
+          const modal = new CodeViewerModal(this.app, fullText, "Tool output");
           modal.open();
         });
       }

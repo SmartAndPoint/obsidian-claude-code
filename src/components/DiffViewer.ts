@@ -256,7 +256,7 @@ function reconstructText(
  * Get relative path from absolute path
  */
 function getRelativePath(app: App, absolutePath: string): string {
-  const vaultPath = (app.vault.adapter as any).basePath as string;
+  const vaultPath = (app.vault.adapter as unknown as { basePath: string }).basePath;
   let relativePath = absolutePath;
 
   if (vaultPath && absolutePath.startsWith(vaultPath)) {
@@ -400,7 +400,7 @@ export class DiffModal extends Modal {
     const actions = header.createDiv({ cls: "diff-modal-actions" });
 
     const acceptAllBtn = actions.createEl("button", { cls: "diff-modal-btn diff-btn-accept" });
-    acceptAllBtn.setText("✓ Accept All");
+    acceptAllBtn.setText("✓ Accept all");
     acceptAllBtn.addEventListener("click", () => {
       this.blocks.forEach(b => {
         b.accepted = true;
@@ -410,7 +410,7 @@ export class DiffModal extends Modal {
     });
 
     const rejectAllBtn = actions.createEl("button", { cls: "diff-modal-btn diff-btn-reject" });
-    rejectAllBtn.setText("✗ Reject All");
+    rejectAllBtn.setText("✗ Reject all");
     rejectAllBtn.addEventListener("click", () => {
       this.blocks.forEach(b => {
         b.accepted = false;
@@ -449,7 +449,7 @@ export class DiffModal extends Modal {
       const footer = contentEl.createDiv({ cls: "diff-modal-footer" });
 
       const applySelectedBtn = footer.createEl("button", { cls: "diff-modal-btn diff-btn-apply-selected" });
-      applySelectedBtn.setText("Apply Selected Changes");
+      applySelectedBtn.setText("Apply selected changes");
       applySelectedBtn.addEventListener("click", () => {
         this.applyChanges();
       });

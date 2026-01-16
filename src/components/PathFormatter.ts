@@ -5,7 +5,7 @@
  * and creates clickable elements for navigation.
  */
 
-import { App, TFile, MarkdownRenderer } from "obsidian";
+import { App, TFile } from "obsidian";
 
 export interface FormattedPath {
   /** Original full path */
@@ -74,7 +74,7 @@ export function parseVaultPath(fullPath: string, vaultBasePath: string): Formatt
  * Format a full path to display text, checking if file exists
  */
 export function formatPath(app: App, fullPath: string): string {
-  const vaultBasePath = (app.vault.adapter as any).basePath as string;
+  const vaultBasePath = (app.vault.adapter as unknown as { basePath: string }).basePath;
   if (!vaultBasePath) return fullPath;
 
   const parsed = parseVaultPath(fullPath, vaultBasePath);
@@ -98,7 +98,7 @@ export function createClickablePath(
     cls?: string;
   }
 ): HTMLElement {
-  const vaultBasePath = (app.vault.adapter as any).basePath as string;
+  const vaultBasePath = (app.vault.adapter as unknown as { basePath: string }).basePath;
   const pathEl = parent.createEl("span", { cls: options?.cls ?? "vault-path" });
 
   if (!vaultBasePath) {
@@ -167,7 +167,7 @@ export async function openFileAtLine(
     setTimeout(() => {
       const view = leaf.view;
       if (view && "editor" in view) {
-        const editor = (view as any).editor;
+        const editor = (view as unknown as { editor: { setCursor: (pos: { line: number; ch: number }) => void; getLine: (n: number) => string; setSelection: (from: { line: number; ch: number }, to: { line: number; ch: number }) => void; scrollIntoView: (range: { from: { line: number; ch: number }; to: { line: number; ch: number } }, center: boolean) => void } }).editor;
         if (editor) {
           // Convert to 0-based line index
           const line = startLine - 1;
@@ -198,7 +198,7 @@ export async function openFileAtLine(
  * Handles any UTF-8 characters (Cyrillic, Chinese, Spanish, etc.)
  */
 export function formatAgentPaths(app: App, text: string): string {
-  const vaultPath = (app.vault.adapter as any).basePath as string;
+  const vaultPath = (app.vault.adapter as unknown as { basePath: string }).basePath;
   if (!vaultPath) return text;
 
   let result = text;

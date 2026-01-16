@@ -13,7 +13,7 @@
 import { existsSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, dirname } from "node:path";
-import { spawn, execSync } from "node:child_process";
+import { spawn } from "node:child_process";
 
 // Package version to install (should match package.json)
 const ACP_PACKAGE = "@zed-industries/claude-code-acp";
@@ -47,20 +47,17 @@ export function getCacheDir(pluginDir: string): string {
  * Check if cached installation exists and is valid
  */
 export function isCachedInstallationValid(cacheDir: string): boolean {
-  const packageJsonPath = join(cacheDir, "node_modules", ACP_PACKAGE.replace("/", "+"), "package.json");
-  const indexPath = join(cacheDir, "node_modules", ACP_PACKAGE.replace("/", "+"), "dist", "index.js");
+  // Check path structure for scoped npm package
+  const packageJsonPath = join(cacheDir, "node_modules", "@zed-industries", "claude-code-acp", "package.json");
+  const indexPath = join(cacheDir, "node_modules", "@zed-industries", "claude-code-acp", "dist", "index.js");
 
-  // Check alternative path structure (npm might use different folder naming)
-  const altPackageJsonPath = join(cacheDir, "node_modules", "@zed-industries", "claude-code-acp", "package.json");
-  const altIndexPath = join(cacheDir, "node_modules", "@zed-industries", "claude-code-acp", "dist", "index.js");
-
-  if (existsSync(altIndexPath) && existsSync(altPackageJsonPath)) {
+  if (existsSync(indexPath) && existsSync(packageJsonPath)) {
     try {
-      const pkg = JSON.parse(readFileSync(altPackageJsonPath, "utf-8"));
+      const pkg = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
       if (pkg.version === ACP_VERSION) {
         return true;
       }
-      console.log(`[BinaryManager] Cached version ${pkg.version} differs from required ${ACP_VERSION}`);
+      console.debug(`[BinaryManager] Cached version ${pkg.version} differs from required ${ACP_VERSION}`);
     } catch {
       // Invalid package.json
     }
@@ -113,7 +110,7 @@ export async function installAcpPackage(
 
     // Find npm executable
     const npmPath = findNpmPath();
-    console.log(`[BinaryManager] Using npm: ${npmPath}`);
+    console.debug(`[BinaryManager] Using npm: ${npmPath}`);
 
     // Run npm install
     return new Promise((resolve) => {
@@ -127,17 +124,15 @@ export async function installAcpPackage(
         shell: process.platform === "win32",
       });
 
-      let stdout = "";
       let stderr = "";
 
       npmProcess.stdout?.on("data", (data) => {
-        stdout += data.toString();
-        console.log("[npm]", data.toString().trim());
+        console.debug("[npm]", data.toString().trim());
       });
 
       npmProcess.stderr?.on("data", (data) => {
         stderr += data.toString();
-        console.log("[npm stderr]", data.toString().trim());
+        console.debug("[npm stderr]", data.toString().trim());
       });
 
       npmProcess.on("error", (err) => {
@@ -210,7 +205,7 @@ export async function ensureBinaryAvailable(
   if (isCachedInstallationValid(cacheDir)) {
     const cachedPath = getCachedBinaryPath(cacheDir);
     if (cachedPath) {
-      console.log("[BinaryManager] Using cached binary:", cachedPath);
+      console.debug("[BinaryManager] Using cached binary:", cachedPath);
       onProgress?.({ status: "ready", message: "Using cached installation" });
       return { path: cachedPath, type: "cached", needsNode: true, version: ACP_VERSION };
     }
@@ -219,7 +214,7 @@ export async function ensureBinaryAvailable(
   // 2. Check local node_modules (development)
   const localPath = findLocalBinary(pluginDir);
   if (localPath) {
-    console.log("[BinaryManager] Using local binary:", localPath);
+    console.debug("[BinaryManager] Using local binary:", localPath);
     onProgress?.({ status: "ready", message: "Using local installation" });
     return { path: localPath, type: "local", needsNode: true };
   }
@@ -227,20 +222,20 @@ export async function ensureBinaryAvailable(
   // 3. Check global/system installations
   const globalPath = findGlobalBinary();
   if (globalPath) {
-    console.log("[BinaryManager] Using global binary:", globalPath);
+    console.debug("[BinaryManager] Using global binary:", globalPath);
     onProgress?.({ status: "ready", message: "Using global installation" });
     return { path: globalPath, type: "global", needsNode: false };
   }
 
   const systemPath = findSystemBinary();
   if (systemPath) {
-    console.log("[BinaryManager] Using system binary:", systemPath);
+    console.debug("[BinaryManager] Using system binary:", systemPath);
     onProgress?.({ status: "ready", message: "Using system installation" });
     return { path: systemPath, type: "system", needsNode: false };
   }
 
   // 4. Need to download and install
-  console.log("[BinaryManager] No binary found, installing...");
+  console.debug("[BinaryManager] No binary found, installing...");
   onProgress?.({ status: "downloading", message: "Binary not found, downloading..." });
 
   const success = await installAcpPackage(cacheDir, onProgress);

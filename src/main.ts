@@ -1,56 +1,66 @@
-import { Plugin, Notice, WorkspaceLeaf, MarkdownView } from "obsidian";
+import { Plugin, Notice, WorkspaceLeaf } from "obsidian";
 import { ObsidianAcpClient, AcpClientEvents } from "./acpClient";
 import { ChatView, CHAT_VIEW_TYPE } from "./views/ChatView";
 
 export default class ClaudeCodePlugin extends Plugin {
   private acpClient: ObsidianAcpClient | null = null;
-  private chatView: ChatView | null = null;
 
-  async onload() {
-    console.log("Loading Claude Code Integration plugin");
+  /**
+   * Get the active ChatView instance via workspace lookup
+   * This avoids memory leaks from storing view references
+   */
+  private getChatView(): ChatView | null {
+    const leaves = this.app.workspace.getLeavesOfType(CHAT_VIEW_TYPE);
+    if (leaves.length > 0) {
+      return leaves[0].view as ChatView;
+    }
+    return null;
+  }
 
-    // Register chat view
-    this.registerView(CHAT_VIEW_TYPE, (leaf) => {
-      this.chatView = new ChatView(leaf, this);
-      return this.chatView;
-    });
+  async onload(): Promise<void> {
+    await Promise.resolve(); // Required for Obsidian Plugin interface
+    console.debug("Loading Claude Code Integration plugin");
+
+    // Register chat view - don't store reference to avoid memory leaks
+    this.registerView(CHAT_VIEW_TYPE, (leaf) => new ChatView(leaf, this));
 
     // Create ACP client with Phase 4.1 event handlers
     const events: AcpClientEvents = {
       // Message streaming
       onMessageChunk: (content) => {
-        this.chatView?.onMessageChunk(content);
+        this.getChatView()?.onMessageChunk(content);
       },
       onThoughtChunk: (content) => {
-        this.chatView?.onThoughtChunk(content);
+        this.getChatView()?.onThoughtChunk(content);
       },
       onMessageComplete: () => {
-        this.chatView?.completeAssistantMessage();
+        this.getChatView()?.completeAssistantMessage();
       },
 
       // Tool calls
       onToolCall: (toolCall) => {
-        console.log(`[Tool] ${toolCall.title}: ${toolCall.status}`);
-        this.chatView?.onToolCall(toolCall);
+        console.debug(`[Tool] ${toolCall.title}: ${toolCall.status}`);
+        this.getChatView()?.onToolCall(toolCall);
       },
       onToolCallUpdate: (update) => {
-        console.log(`[Tool Update] ${update.toolCallId}: ${update.status}`);
-        this.chatView?.onToolCallUpdate(update);
+        console.debug(`[Tool Update] ${update.toolCallId}: ${update.status}`);
+        this.getChatView()?.onToolCallUpdate(update);
       },
 
       // Plan
       onPlan: (plan) => {
-        console.log(`[Plan] ${plan.entries.length} entries`);
-        this.chatView?.onPlan(plan);
+        console.debug(`[Plan] ${plan.entries.length} entries`);
+        this.getChatView()?.onPlan(plan);
       },
 
       // Permission request with inline card
       onPermissionRequest: async (params) => {
-        console.log(`[Permission] ${params.toolCall.title}`);
+        console.debug(`[Permission] ${params.toolCall.title}`);
 
         // Use inline permission card in chat
-        if (this.chatView) {
-          return await this.chatView.onPermissionRequest(params);
+        const chatView = this.getChatView();
+        if (chatView) {
+          return await chatView.onPermissionRequest(params);
         }
 
         // Fallback: auto-deny if no chat view
@@ -63,23 +73,23 @@ export default class ClaudeCodePlugin extends Plugin {
       onError: (error) => {
         console.error("[ACP Error]", error);
         new Notice(`Claude Code Integration: ${error.message}`);
-        this.chatView?.updateStatus("disconnected");
+        this.getChatView()?.updateStatus("disconnected");
       },
       onConnected: () => {
-        console.log("[ACP] Connected");
+        console.debug("[ACP] Connected");
         new Notice("Claude Code Integration: Connected");
-        this.chatView?.updateStatus("connected");
+        this.getChatView()?.updateStatus("connected");
       },
       onDisconnected: () => {
-        console.log("[ACP] Disconnected");
+        console.debug("[ACP] Disconnected");
         new Notice("Claude Code Integration: Disconnected");
-        this.chatView?.updateStatus("disconnected");
+        this.getChatView()?.updateStatus("disconnected");
       },
 
       // Legacy fallback (optional)
       onMessage: (text) => {
         // Used for backward compatibility if needed
-        console.log("[Claude Legacy]", text.slice(0, 50));
+        console.debug("[Claude Legacy]", text.slice(0, 50));
       },
     };
 
@@ -88,27 +98,26 @@ export default class ClaudeCodePlugin extends Plugin {
     // Register commands
     this.addCommand({
       id: "open-chat",
-      name: "Open Chat",
-      callback: () => this.activateChatView(),
+      name: "Open chat",
+      callback: () => void this.activateChatView(),
     });
 
     this.addCommand({
       id: "connect",
       name: "Connect",
-      callback: () => this.connect(),
+      callback: () => void this.connect(),
     });
 
     this.addCommand({
       id: "disconnect",
       name: "Disconnect",
-      callback: () => this.disconnect(),
+      callback: () => void this.disconnect(),
     });
 
-    // Add selection to chat (Cmd+L)
+    // Add selection to chat
     this.addCommand({
       id: "add-selection-to-chat",
-      name: "Add Selection to Chat",
-      hotkeys: [{ modifiers: ["Mod", "Shift"], key: "." }],
+      name: "Add selection to chat",
       editorCallback: (editor, view) => {
         const selection = editor.getSelection();
         if (!selection) {
@@ -126,21 +135,21 @@ export default class ClaudeCodePlugin extends Plugin {
         const to = editor.getCursor("to");
 
         // Ensure chat view is open
-        this.activateChatView().then(() => {
+        void this.activateChatView().then(() => {
           // Add selection to chat
-          this.chatView?.addSelection(file, from.line + 1, to.line + 1, selection);
+          this.getChatView()?.addSelection(file, from.line + 1, to.line + 1, selection);
         });
       },
     });
 
     // Add ribbon icon
     this.addRibbonIcon("bot", "Claude Code", () => {
-      this.activateChatView();
+      void this.activateChatView();
     });
   }
 
-  async onunload() {
-    console.log("Unloading Claude Code plugin");
+  async onunload(): Promise<void> {
+    console.debug("Unloading Claude Code plugin");
     await this.acpClient?.disconnect();
   }
 
@@ -166,15 +175,15 @@ export default class ClaudeCodePlugin extends Plugin {
 
   async connect(): Promise<void> {
     try {
-      this.chatView?.updateStatus("connecting");
-      const vaultPath = (this.app.vault.adapter as any).basePath;
+      this.getChatView()?.updateStatus("connecting");
+      const vaultPath = (this.app.vault.adapter as unknown as { basePath: string }).basePath;
 
       // Get plugin directory for binary caching
       const pluginDir = this.manifest.dir
         ? `${vaultPath}/.obsidian/plugins/${this.manifest.id}`
         : __dirname;
 
-      console.log(`[Plugin] Plugin directory: ${pluginDir}`);
+      console.debug(`[Plugin] Plugin directory: ${pluginDir}`);
 
       // Connect with download progress callback
       await this.acpClient?.connect(
@@ -185,7 +194,7 @@ export default class ClaudeCodePlugin extends Plugin {
           // Show download progress to user
           if (progress.status === "downloading" || progress.status === "installing") {
             new Notice(progress.message, 3000);
-            this.chatView?.updateStatus("connecting", progress.message);
+            this.getChatView()?.updateStatus("connecting", progress.message);
           } else if (progress.status === "error") {
             new Notice(`Error: ${progress.message}`, 5000);
           }
@@ -193,7 +202,7 @@ export default class ClaudeCodePlugin extends Plugin {
       );
     } catch (error) {
       new Notice(`Failed to connect: ${(error as Error).message}`);
-      this.chatView?.updateStatus("disconnected");
+      this.getChatView()?.updateStatus("disconnected");
     }
   }
 
@@ -206,13 +215,13 @@ export default class ClaudeCodePlugin extends Plugin {
       throw new Error("Not connected");
     }
 
-    this.chatView?.updateStatus("thinking");
+    this.getChatView()?.updateStatus("thinking");
 
     try {
       await this.acpClient.sendMessage(text);
       // Note: completeAssistantMessage is now called via onMessageComplete event
     } catch (error) {
-      this.chatView?.updateStatus("connected");
+      this.getChatView()?.updateStatus("connected");
       throw error;
     }
   }

@@ -5,7 +5,6 @@ import * as acp from "@agentclientprotocol/sdk";
 import {
   ensureBinaryAvailable,
   getSpawnArgs,
-  DownloadProgress,
   ProgressCallback,
 } from "./binaryManager";
 
@@ -55,6 +54,7 @@ export class ObsidianAcpClient implements acp.Client {
   }
 
   async sessionUpdate(params: acp.SessionNotification): Promise<void> {
+    await Promise.resolve(); // Required for ACP Client interface
     const update = params.update;
 
     switch (update.sessionUpdate) {
@@ -85,7 +85,7 @@ export class ObsidianAcpClient implements acp.Client {
 
       case "user_message_chunk":
         // Echo of user message, typically ignored
-        console.log("[ACP] User message echo:", update.content);
+        console.debug("[ACP] User message echo:", update.content);
         break;
 
       case "available_commands_update":
@@ -93,11 +93,11 @@ export class ObsidianAcpClient implements acp.Client {
       case "config_option_update":
       case "session_info_update":
         // These are informational updates, log for now
-        console.log(`[ACP] ${update.sessionUpdate}:`, update);
+        console.debug(`[ACP] ${update.sessionUpdate}:`, update);
         break;
 
       default:
-        console.log("[ACP] Unknown session update:", update);
+        console.debug("[ACP] Unknown session update:", update);
         break;
     }
   }
@@ -106,11 +106,11 @@ export class ObsidianAcpClient implements acp.Client {
     params: acp.WriteTextFileRequest
   ): Promise<acp.WriteTextFileResponse> {
     const filePath = params.path;
-    console.log("[ACP] writeTextFile:", filePath);
+    console.debug("[ACP] writeTextFile:", filePath);
 
     try {
       await fs.writeFile(filePath, params.content, { encoding: "utf-8" });
-      console.log("[ACP] writeTextFile: success");
+      console.debug("[ACP] writeTextFile: success");
       return {};
     } catch (error) {
       const err = error as NodeJS.ErrnoException;
@@ -125,7 +125,7 @@ export class ObsidianAcpClient implements acp.Client {
     params: acp.ReadTextFileRequest
   ): Promise<acp.ReadTextFileResponse> {
     const filePath = params.path;
-    console.log("[ACP] readTextFile:", filePath);
+    console.debug("[ACP] readTextFile:", filePath);
 
     try {
       // Check if file exists first
@@ -136,7 +136,7 @@ export class ObsidianAcpClient implements acp.Client {
 
       // Read file with UTF-8 encoding
       const content = await fs.readFile(filePath, { encoding: "utf-8" });
-      console.log(`[ACP] readTextFile: success, ${content.length} chars`);
+      console.debug(`[ACP] readTextFile: success, ${content.length} chars`);
       return { content };
     } catch (error) {
       const err = error as NodeJS.ErrnoException;
@@ -154,7 +154,7 @@ export class ObsidianAcpClient implements acp.Client {
   ): Promise<void> {
     try {
       // Find or download claude-code-acp binary using BinaryManager
-      console.log(`[ACP] Ensuring binary available, plugin dir: ${pluginDir}`);
+      console.debug(`[ACP] Ensuring binary available, plugin dir: ${pluginDir}`);
       const binaryInfo = await ensureBinaryAvailable(pluginDir, onDownloadProgress);
 
       if (!binaryInfo) {
@@ -162,15 +162,15 @@ export class ObsidianAcpClient implements acp.Client {
       }
 
       const spawnArgs = getSpawnArgs(binaryInfo);
-      console.log(`[ACP] Using binary: ${binaryInfo.path} (${binaryInfo.type})`);
-      console.log(`[ACP] Spawn command: ${spawnArgs.command} ${spawnArgs.args.join(" ")}`);
+      console.debug(`[ACP] Using binary: ${binaryInfo.path} (${binaryInfo.type})`);
+      console.debug(`[ACP] Spawn command: ${spawnArgs.command} ${spawnArgs.args.join(" ")}`);
 
       // Check for API key
       const anthropicKey = apiKey || process.env.ANTHROPIC_API_KEY;
       if (!anthropicKey) {
         console.warn("[ACP] Warning: ANTHROPIC_API_KEY not found in environment");
       } else {
-        console.log("[ACP] API key found");
+        console.debug("[ACP] API key found");
       }
 
       // Spawn claude-code-acp process
@@ -192,18 +192,18 @@ export class ObsidianAcpClient implements acp.Client {
       });
 
       this.process.on("exit", (code, signal) => {
-        console.log(`[ACP] Process exited: code=${code}, signal=${signal}`);
+        console.debug(`[ACP] Process exited: code=${code}, signal=${signal}`);
       });
 
       this.process.stderr?.on("data", (data: Buffer) => {
-        console.log("[ACP stderr]", data.toString());
+        console.debug("[ACP stderr]", data.toString());
       });
 
       if (!this.process.stdin || !this.process.stdout) {
         throw new Error("Failed to get process streams");
       }
 
-      console.log("[ACP] Process spawned, creating connection...");
+      console.debug("[ACP] Process spawned, creating connection...");
 
       const input = Writable.toWeb(this.process.stdin);
       const output = Readable.toWeb(this.process.stdout) as ReadableStream<Uint8Array>;
@@ -211,7 +211,7 @@ export class ObsidianAcpClient implements acp.Client {
       const stream = acp.ndJsonStream(input, output);
       this.connection = new acp.ClientSideConnection((_agent) => this, stream);
 
-      console.log("[ACP] Initializing connection...");
+      console.debug("[ACP] Initializing connection...");
 
       // Initialize connection
       const initResult = await this.connection.initialize({
@@ -224,7 +224,7 @@ export class ObsidianAcpClient implements acp.Client {
         },
       });
 
-      console.log(`[ACP] Connected, protocol v${initResult.protocolVersion}`);
+      console.debug(`[ACP] Connected, protocol v${initResult.protocolVersion}`);
 
       // Create session
       const sessionResult = await this.connection.newSession({
@@ -233,7 +233,7 @@ export class ObsidianAcpClient implements acp.Client {
       });
 
       this.currentSessionId = sessionResult.sessionId;
-      console.log(`[ACP] Session created: ${this.currentSessionId}`);
+      console.debug(`[ACP] Session created: ${this.currentSessionId}`);
 
       this.events.onConnected();
     } catch (error) {
@@ -257,13 +257,14 @@ export class ObsidianAcpClient implements acp.Client {
       ],
     });
 
-    console.log(`[ACP] Prompt completed: ${result.stopReason}`);
+    console.debug(`[ACP] Prompt completed: ${result.stopReason}`);
 
     // Signal message completion
     this.events.onMessageComplete();
   }
 
   async disconnect(): Promise<void> {
+    await Promise.resolve(); // Required for async interface
     if (this.process) {
       this.process.kill();
       this.process = null;

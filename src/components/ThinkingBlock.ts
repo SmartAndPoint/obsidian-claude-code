@@ -31,8 +31,7 @@ export class ThinkingBlock {
     this.header.addEventListener("click", () => this.toggle());
 
     // Content area (hidden by default)
-    this.content = this.container.createDiv({ cls: "thinking-content" });
-    this.content.style.display = "none";
+    this.content = this.container.createDiv({ cls: "thinking-content is-hidden" });
   }
 
   appendText(chunk: string): void {
@@ -51,7 +50,7 @@ export class ThinkingBlock {
 
   toggle(): void {
     this.isCollapsed = !this.isCollapsed;
-    this.content.style.display = this.isCollapsed ? "none" : "block";
+    this.content.toggleClass("is-hidden", this.isCollapsed);
     this.updateToggleButton();
 
     // Reset label when expanded

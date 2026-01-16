@@ -5,7 +5,7 @@
  * This wrapper creates a Promise that resolves when user makes a choice.
  */
 
-import { App, Modal, Setting } from "obsidian";
+import { App, Modal } from "obsidian";
 import type * as acp from "@agentclientprotocol/sdk";
 
 export class PermissionModal extends Modal {
@@ -35,7 +35,7 @@ export class PermissionModal extends Modal {
 
     // Header
     const header = contentEl.createDiv({ cls: "permission-header" });
-    header.createEl("h2").setText("⚠️ Permission Required");
+    header.createEl("h2").setText("⚠️ Permission required");
 
     // Tool call info
     const toolInfo = contentEl.createDiv({ cls: "permission-tool-info" });
@@ -66,15 +66,10 @@ export class PermissionModal extends Modal {
     // Options
     const optionsEl = contentEl.createDiv({ cls: "permission-options" });
 
-    // Group options by kind
+    // Group options by kind and select first allow option by default
     const allowOptions = this.request.options.filter(
       (o) => o.kind === "allow_once" || o.kind === "allow_always"
     );
-    const rejectOptions = this.request.options.filter(
-      (o) => o.kind === "reject_once" || o.kind === "reject_always"
-    );
-
-    // Select first allow option by default
     if (allowOptions.length > 0) {
       this.selectedOptionId = allowOptions[0].optionId;
     }
