@@ -617,7 +617,7 @@ export class ChatView extends ItemView {
 
       // Copy button for streaming message
       const copyBtn = this.currentStreamingEl.createEl("button", { cls: "message-copy-btn" });
-      copyBtn.setText("📋");
+      setIcon(copyBtn, "copy");
       copyBtn.setAttribute("aria-label", "Copy message");
       copyBtn.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -676,7 +676,7 @@ export class ChatView extends ItemView {
 
     // Copy button
     const copyBtn = messageEl.createEl("button", { cls: "message-copy-btn" });
-    copyBtn.setText("📋");
+    setIcon(copyBtn, "copy");
     copyBtn.setAttribute("aria-label", "Copy message");
     copyBtn.addEventListener("click", (e) => {
       e.stopPropagation();
