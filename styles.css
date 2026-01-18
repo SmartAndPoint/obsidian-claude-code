@@ -1033,6 +1033,41 @@
   padding: 0;
 }
 
+/* Markdown content in modal */
+.code-viewer-markdown {
+  padding: 16px;
+}
+
+.code-viewer-markdown pre {
+  background: var(--background-secondary);
+  border-radius: 6px;
+  padding: 12px;
+  overflow-x: auto;
+}
+
+/* Code with syntax highlighting in modal */
+.code-viewer-code {
+  padding: 0;
+}
+
+.code-viewer-code pre {
+  margin: 0;
+  padding: 16px;
+  border-radius: 0;
+  background: var(--background-primary);
+}
+
+.code-viewer-code code {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Plain text in modal */
+.code-viewer-text pre {
+  margin: 0;
+  background: transparent;
+}
+
 /* ===== File Suggest Dropdown ===== */
 
 .file-suggest-dropdown {

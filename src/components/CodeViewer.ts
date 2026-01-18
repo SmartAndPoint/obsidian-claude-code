@@ -5,33 +5,90 @@
  * with "Show more..." link to open full content in modal.
  */
 
-import { App, Modal } from "obsidian";
+import { App, Modal, MarkdownRenderer, Component } from "obsidian";
 
 // Only collapse really long code blocks - short ones are important context
 const MAX_PREVIEW_LINES = 25;
 const MAX_PREVIEW_CHARS = 2000;
 
+export type ContentType = "auto" | "code" | "markdown" | "text";
+
+interface CodeViewerOptions {
+  title?: string;
+  contentType?: ContentType;
+  language?: string; // For code: "typescript", "python", etc.
+}
+
 /**
- * Modal for viewing full code/output content
+ * Detect content type from content
+ */
+function detectContentType(content: string): { type: ContentType; language?: string } {
+  // Check for markdown indicators
+  const hasMarkdownHeaders = /^#{1,6}\s/m.test(content);
+  const hasMarkdownLists = /^[\-\*]\s/m.test(content);
+  const hasMarkdownLinks = /\[.+\]\(.+\)/.test(content);
+  const hasMarkdownCodeBlocks = /```[\s\S]*?```/.test(content);
+
+  if (hasMarkdownHeaders || hasMarkdownLists || hasMarkdownLinks || hasMarkdownCodeBlocks) {
+    return { type: "markdown" };
+  }
+
+  // Check for code patterns
+  const codePatterns: [RegExp, string][] = [
+    [/^(import|export|from)\s+/m, "typescript"],
+    [/^(const|let|var|function|class|interface|type)\s+\w+/m, "typescript"],
+    [/^(def|class|import|from|if __name__)/m, "python"],
+    [/^(package|func|import|type|struct)\s+/m, "go"],
+    [/^(use|fn|let|mut|impl|struct|enum)\s+/m, "rust"],
+    [/^(public|private|protected|class|interface|package)\s+/m, "java"],
+    [/^\s*[{}\[\]]:?\s*$/m, "json"],
+    [/^<\?php/m, "php"],
+    [/^<[a-zA-Z][^>]*>/m, "html"],
+    [/^\s*\$[\w-]+\s*:/m, "scss"],
+    [/^@\w+\s*{/m, "css"],
+  ];
+
+  for (const [pattern, lang] of codePatterns) {
+    if (pattern.test(content)) {
+      return { type: "code", language: lang };
+    }
+  }
+
+  // Default to text
+  return { type: "text" };
+}
+
+/**
+ * Modal for viewing full code/output content with syntax highlighting
  */
 export class CodeViewerModal extends Modal {
   private content: string;
-  private title: string;
+  private options: CodeViewerOptions;
+  private component: Component;
+  private contentContainer: HTMLElement | null = null;
 
-  constructor(app: App, content: string, title: string = "Output") {
+  constructor(app: App, content: string, titleOrOptions?: string | CodeViewerOptions) {
     super(app);
     this.content = content;
-    this.title = title;
+    this.component = new Component();
+
+    // Handle legacy string title or new options object
+    if (typeof titleOrOptions === "string") {
+      this.options = { title: titleOrOptions };
+    } else {
+      this.options = titleOrOptions ?? {};
+    }
   }
 
   onOpen(): void {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass("code-viewer-modal");
+    this.component.load();
 
     // Header
     const header = contentEl.createDiv({ cls: "code-viewer-header" });
-    header.createEl("h3").setText(this.title);
+    header.createEl("h3").setText(this.options.title ?? "Output");
 
     // Copy button
     const copyBtn = header.createEl("button", { cls: "code-viewer-copy" });
@@ -43,37 +100,94 @@ export class CodeViewerModal extends Modal {
       });
     });
 
-    // Content
-    const pre = contentEl.createEl("pre", { cls: "code-viewer-content" });
+    // Content container
+    this.contentContainer = contentEl.createDiv({ cls: "code-viewer-content" });
+
+    // Determine content type
+    let contentType = this.options.contentType ?? "auto";
+    let language = this.options.language;
+
+    if (contentType === "auto") {
+      const detected = detectContentType(this.content);
+      contentType = detected.type;
+      language = language ?? detected.language;
+    }
+
+    // Render based on content type
+    if (contentType === "markdown") {
+      this.renderMarkdown();
+    } else if (contentType === "code" && language) {
+      this.renderCode(language);
+    } else {
+      this.renderPlainText();
+    }
+
+    // Ctrl+A / Cmd+A selects only modal content
+    this.setupSelectAll();
+  }
+
+  private renderMarkdown(): void {
+    if (!this.contentContainer) return;
+    this.contentContainer.addClass("code-viewer-markdown");
+
+    MarkdownRenderer.render(
+      this.app,
+      this.content,
+      this.contentContainer,
+      "",
+      this.component
+    );
+  }
+
+  private renderCode(language: string): void {
+    if (!this.contentContainer) return;
+    this.contentContainer.addClass("code-viewer-code");
+
+    // Wrap content in markdown code block for syntax highlighting
+    const markdownContent = "```" + language + "\n" + this.content + "\n```";
+
+    MarkdownRenderer.render(
+      this.app,
+      markdownContent,
+      this.contentContainer,
+      "",
+      this.component
+    );
+  }
+
+  private renderPlainText(): void {
+    if (!this.contentContainer) return;
+    this.contentContainer.addClass("code-viewer-text");
+
+    const pre = this.contentContainer.createEl("pre");
     const code = pre.createEl("code");
     code.setText(this.content);
+  }
 
-    // Ctrl+A selects only modal content, not entire page
-    this.scope.register(["Ctrl"], "a", (e) => {
+  private setupSelectAll(): void {
+    const selectContent = (e: KeyboardEvent) => {
       e.preventDefault();
       const selection = window.getSelection();
       const range = document.createRange();
-      range.selectNodeContents(code);
-      selection?.removeAllRanges();
-      selection?.addRange(range);
+      if (this.contentContainer) {
+        range.selectNodeContents(this.contentContainer);
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+      }
       return false;
-    });
+    };
 
-    // Also handle Cmd+A for macOS
-    this.scope.register(["Meta"], "a", (e) => {
-      e.preventDefault();
-      const selection = window.getSelection();
-      const range = document.createRange();
-      range.selectNodeContents(code);
-      selection?.removeAllRanges();
-      selection?.addRange(range);
-      return false;
-    });
+    // Ctrl+A for Windows/Linux
+    this.scope.register(["Ctrl"], "a", selectContent);
+    // Cmd+A for macOS
+    this.scope.register(["Meta"], "a", selectContent);
   }
 
   onClose(): void {
+    this.component.unload();
     const { contentEl } = this;
     contentEl.empty();
+    this.contentContainer = null;
   }
 }
 
