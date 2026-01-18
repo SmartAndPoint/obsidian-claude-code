@@ -47,6 +47,28 @@ export class CodeViewerModal extends Modal {
     const pre = contentEl.createEl("pre", { cls: "code-viewer-content" });
     const code = pre.createEl("code");
     code.setText(this.content);
+
+    // Ctrl+A selects only modal content, not entire page
+    this.scope.register(["Ctrl"], "a", (e) => {
+      e.preventDefault();
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(code);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+      return false;
+    });
+
+    // Also handle Cmd+A for macOS
+    this.scope.register(["Meta"], "a", (e) => {
+      e.preventDefault();
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(code);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+      return false;
+    });
   }
 
   onClose(): void {
