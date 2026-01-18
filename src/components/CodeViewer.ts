@@ -25,7 +25,7 @@ interface CodeViewerOptions {
 function detectContentType(content: string): { type: ContentType; language?: string } {
   // Check for markdown indicators
   const hasMarkdownHeaders = /^#{1,6}\s/m.test(content);
-  const hasMarkdownLists = /^[\-\*]\s/m.test(content);
+  const hasMarkdownLists = /^[-*]\s/m.test(content);
   const hasMarkdownLinks = /\[.+\]\(.+\)/.test(content);
   const hasMarkdownCodeBlocks = /```[\s\S]*?```/.test(content);
 
@@ -41,7 +41,7 @@ function detectContentType(content: string): { type: ContentType; language?: str
     [/^(package|func|import|type|struct)\s+/m, "go"],
     [/^(use|fn|let|mut|impl|struct|enum)\s+/m, "rust"],
     [/^(public|private|protected|class|interface|package)\s+/m, "java"],
-    [/^\s*[{}\[\]]:?\s*$/m, "json"],
+    [/^\s*[{}[\]]:?\s*$/m, "json"],
     [/^<\?php/m, "php"],
     [/^<[a-zA-Z][^>]*>/m, "html"],
     [/^\s*\$[\w-]+\s*:/m, "scss"],
@@ -130,7 +130,7 @@ export class CodeViewerModal extends Modal {
     if (!this.contentContainer) return;
     this.contentContainer.addClass("code-viewer-markdown");
 
-    MarkdownRenderer.render(
+    void MarkdownRenderer.render(
       this.app,
       this.content,
       this.contentContainer,
@@ -146,7 +146,7 @@ export class CodeViewerModal extends Modal {
     // Wrap content in markdown code block for syntax highlighting
     const markdownContent = "```" + language + "\n" + this.content + "\n```";
 
-    MarkdownRenderer.render(
+    void MarkdownRenderer.render(
       this.app,
       markdownContent,
       this.contentContainer,

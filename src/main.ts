@@ -77,12 +77,12 @@ export default class ClaudeCodePlugin extends Plugin {
       },
       onConnected: () => {
         console.debug("[ACP] Connected");
-        new Notice("Claude Code: connected");
+        new Notice("Connected to Claude Code");
         this.getChatView()?.updateStatus("connected");
       },
       onDisconnected: () => {
         console.debug("[ACP] Disconnected");
-        new Notice("Claude Code: disconnected");
+        new Notice("Disconnected from Claude Code");
         this.getChatView()?.updateStatus("disconnected");
       },
 
@@ -169,7 +169,7 @@ export default class ClaudeCodePlugin extends Plugin {
     }
 
     if (leaf) {
-      workspace.revealLeaf(leaf);
+      void workspace.revealLeaf(leaf);
     }
   }
 

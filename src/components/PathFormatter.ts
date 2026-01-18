@@ -130,7 +130,7 @@ export function createClickablePath(
     pathEl.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      openFileAtLine(app, parsed.relativePath, parsed.startLine, parsed.endLine);
+      void openFileAtLine(app, parsed.relativePath, parsed.startLine, parsed.endLine);
     });
   } else {
     // File not found - show full path grayed out

@@ -139,7 +139,7 @@ export class ToolCallCard {
     if (diff.path) {
       createClickablePath(this.app, diffHeader, diff.path, { cls: "diff-path-link" });
     } else {
-      diffHeader.setText("file");
+      diffHeader.setText("File");
     }
 
     // Simple diff display from oldText/newText

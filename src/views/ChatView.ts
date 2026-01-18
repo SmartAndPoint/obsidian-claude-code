@@ -141,8 +141,8 @@ export class ChatView extends ItemView {
 
     // Auto-resize textarea and sync chips
     this.textarea.addEventListener("input", () => {
-      this.textarea.style.setProperty("--chat-input-height", "auto");
-      this.textarea.style.setProperty("--chat-input-height", Math.min(this.textarea.scrollHeight, 200) + "px");
+      this.textarea.style.height = "auto";
+      this.textarea.style.height = Math.min(this.textarea.scrollHeight, 200) + "px";
 
       // Sync chips with text - remove orphaned chips
       this.syncChipsWithText();
@@ -239,7 +239,7 @@ export class ChatView extends ItemView {
 
     // Clear input and selection chips
     this.textarea.value = "";
-    this.textarea.style.setProperty("--chat-input-height", "auto");
+    this.textarea.style.height = "auto";
 
     // Reset streaming state
     this.resetStreamingState();
@@ -637,7 +637,7 @@ export class ChatView extends ItemView {
     // BMO pattern: Re-render entire accumulated message through temp container
     const tempContainer = document.createElement("div");
 
-    MarkdownRenderer.render(
+    void MarkdownRenderer.render(
       this.app,
       formattedMessage,
       tempContainer,
@@ -692,7 +692,7 @@ export class ChatView extends ItemView {
       : message.content;
 
     // Render content with markdown
-    MarkdownRenderer.render(
+    void MarkdownRenderer.render(
       this.app,
       displayContent,
       contentEl,
@@ -892,8 +892,8 @@ export class ChatView extends ItemView {
       .trim();
 
     // Trigger resize (but don't re-sync to avoid loop)
-    this.textarea.style.setProperty("--chat-input-height", "auto");
-    this.textarea.style.setProperty("--chat-input-height", Math.min(this.textarea.scrollHeight, 200) + "px");
+    this.textarea.style.height = "auto";
+    this.textarea.style.height = Math.min(this.textarea.scrollHeight, 200) + "px";
   }
 
   /**

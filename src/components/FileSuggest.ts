@@ -297,9 +297,9 @@ export class FileSuggest {
     const inputRect = this.inputEl.getBoundingClientRect();
     const containerRect = this.container.getBoundingClientRect();
 
-    this.dropdown.style.setProperty("bottom", `${containerRect.bottom - inputRect.top + 4}px`);
-    this.dropdown.style.setProperty("--dropdown-left", "16px");
-    this.dropdown.style.setProperty("--dropdown-right", "16px");
+    this.dropdown.style.bottom = `${containerRect.bottom - inputRect.top + 4}px`;
+    this.dropdown.style.left = "16px";
+    this.dropdown.style.right = "16px";
   }
 
   /**
