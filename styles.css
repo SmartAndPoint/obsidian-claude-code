@@ -5,6 +5,17 @@
   display: none !important;
 }
 
+/* Dynamic sizing via CSS custom properties */
+.chat-input {
+  height: var(--chat-input-height, auto);
+}
+
+/* Dropdown positioning via CSS custom properties */
+.file-suggest-dropdown {
+  left: var(--dropdown-left, 16px);
+  right: var(--dropdown-right, 16px);
+}
+
 .claude-code-chat {
   display: flex;
   flex-direction: column;

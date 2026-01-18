@@ -62,7 +62,8 @@ export class PermissionCard {
       const input = toolCall.rawInput as Record<string, unknown>;
       if (input.command) {
         const cmdEl = content.createDiv({ cls: "permission-card-command" });
-        cmdEl.createEl("code").setText(`$ ${input.command}`);
+        const cmdStr = typeof input.command === "string" ? input.command : JSON.stringify(input.command);
+        cmdEl.createEl("code").setText(`$ ${cmdStr}`);
       }
     }
 

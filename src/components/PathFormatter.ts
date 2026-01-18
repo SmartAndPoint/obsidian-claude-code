@@ -216,7 +216,7 @@ export function formatAgentPaths(app: App, text: string): string {
       const char = result[endIndex];
 
       // Stop at whitespace or common punctuation (but include various quote styles)
-      if (/[\s,;!?()\[\]<>"'«»„"'']/.test(char)) break;
+      if (/[\s,;!?()[\]<>"'«»„"'']/.test(char)) break;
 
       // Allow : only if followed by digits (line numbers)
       if (char === ':') {

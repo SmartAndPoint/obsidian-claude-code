@@ -61,7 +61,7 @@ export class FileSuggest {
 
     // Find [[ before cursor
     const beforeCursor = value.slice(0, cursorPos);
-    const triggerMatch = beforeCursor.match(/\[\[([^\[\]]*?)$/);
+    const triggerMatch = beforeCursor.match(/\[\[([^[\]]*?)$/);
 
     if (triggerMatch) {
       this.triggerStart = beforeCursor.lastIndexOf("[[");
@@ -297,9 +297,9 @@ export class FileSuggest {
     const inputRect = this.inputEl.getBoundingClientRect();
     const containerRect = this.container.getBoundingClientRect();
 
-    this.dropdown.style.bottom = `${containerRect.bottom - inputRect.top + 4}px`;
-    this.dropdown.style.left = "16px";
-    this.dropdown.style.right = "16px";
+    this.dropdown.style.setProperty("bottom", `${containerRect.bottom - inputRect.top + 4}px`);
+    this.dropdown.style.setProperty("--dropdown-left", "16px");
+    this.dropdown.style.setProperty("--dropdown-right", "16px");
   }
 
   /**
@@ -401,7 +401,7 @@ export function resolveFileReferences(
   app: App
 ): string {
   // Match [[filename]] patterns
-  return text.replace(/\[\[([^\[\]]+)\]\]/g, (match, filename) => {
+  return text.replace(/\[\[([^[\]]+)\]\]/g, (match, filename) => {
     // Try to find the file in vault
     const file = app.metadataCache.getFirstLinkpathDest(filename, "");
 

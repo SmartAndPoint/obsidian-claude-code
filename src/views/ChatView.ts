@@ -103,7 +103,7 @@ export class ChatView extends ItemView {
     // Connect button
     const connectBtn = header.createEl("button", { cls: "chat-connect-btn" });
     setIcon(connectBtn, "plug");
-    connectBtn.addEventListener("click", () => this.handleConnect());
+    connectBtn.addEventListener("click", () => void this.handleConnect());
 
     // Messages container
     this.messagesContainer = container.createDiv({ cls: "chat-messages" });
@@ -141,8 +141,8 @@ export class ChatView extends ItemView {
 
     // Auto-resize textarea and sync chips
     this.textarea.addEventListener("input", () => {
-      this.textarea.style.height = "auto";
-      this.textarea.style.height = Math.min(this.textarea.scrollHeight, 200) + "px";
+      this.textarea.style.setProperty("--chat-input-height", "auto");
+      this.textarea.style.setProperty("--chat-input-height", Math.min(this.textarea.scrollHeight, 200) + "px");
 
       // Sync chips with text - remove orphaned chips
       this.syncChipsWithText();
@@ -150,7 +150,7 @@ export class ChatView extends ItemView {
 
     this.sendButton = inputRow.createEl("button", { cls: "chat-send-btn" });
     setIcon(this.sendButton, "send");
-    this.sendButton.addEventListener("click", () => this.handleSend());
+    this.sendButton.addEventListener("click", () => void this.handleSend());
 
     // File suggestion for [[ syntax
     this.fileSuggest = new FileSuggest(
@@ -239,7 +239,7 @@ export class ChatView extends ItemView {
 
     // Clear input and selection chips
     this.textarea.value = "";
-    this.textarea.style.height = "auto";
+    this.textarea.style.setProperty("--chat-input-height", "auto");
 
     // Reset streaming state
     this.resetStreamingState();
@@ -758,33 +758,37 @@ export class ChatView extends ItemView {
         }
       }
 
-      link.addEventListener("click", async (e) => {
+      link.addEventListener("click", (e) => {
         e.preventDefault();
 
         // Try to find the file in vault
         const file = this.app.metadataCache.getFirstLinkpathDest(href, "");
 
         if (file) {
+          // Capture values for setTimeout closure
+          const capturedStartLine = startLine;
+          const capturedEndLine = endLine;
+
           // Open the file
-          await this.app.workspace.openLinkText(href, "", false);
+          void this.app.workspace.openLinkText(href, "", false).then(() => {
+            // If we have line info, scroll to and select those lines
+            if (capturedStartLine !== null && capturedEndLine !== null) {
+              // Small delay to ensure file is loaded
+              setTimeout(() => {
+                const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+                if (activeView && activeView.editor) {
+                  const editor = activeView.editor;
+                  // Lines are 0-indexed in CodeMirror
+                  const from = { line: capturedStartLine - 1, ch: 0 };
+                  const to = { line: capturedEndLine, ch: 0 };
 
-          // If we have line info, scroll to and select those lines
-          if (startLine !== null && endLine !== null) {
-            // Small delay to ensure file is loaded
-            setTimeout(() => {
-              const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
-              if (activeView && activeView.editor) {
-                const editor = activeView.editor;
-                // Lines are 0-indexed in CodeMirror
-                const from = { line: startLine! - 1, ch: 0 };
-                const to = { line: endLine!, ch: 0 };
-
-                // Scroll to line and select
-                editor.setSelection(from, to);
-                editor.scrollIntoView({ from, to }, true);
-              }
-            }, 100);
-          }
+                  // Scroll to line and select
+                  editor.setSelection(from, to);
+                  editor.scrollIntoView({ from, to }, true);
+                }
+              }, 100);
+            }
+          });
         } else {
           console.debug(`[ChatView] File not found: ${href}`);
         }
@@ -794,29 +798,28 @@ export class ChatView extends ItemView {
 
   private showDiffModal(diff: acp.Diff): void {
     const modal = new DiffModal(this.app, diff, {
-      onApply: async (newText: string) => {
+      onApply: (newText: string) => {
         // Apply changes directly via Obsidian API
         if (diff.path) {
-          try {
-            // Get relative path from full path
-            const vaultPath = (this.app.vault.adapter as unknown as { basePath: string }).basePath;
-            let relativePath = diff.path;
-            if (vaultPath && diff.path.startsWith(vaultPath)) {
-              relativePath = diff.path.slice(vaultPath.length);
-              if (relativePath.startsWith('/')) {
-                relativePath = relativePath.slice(1);
-              }
+          // Get relative path from full path
+          const vaultPath = (this.app.vault.adapter as unknown as { basePath: string }).basePath;
+          let relativePath = diff.path;
+          if (vaultPath && diff.path.startsWith(vaultPath)) {
+            relativePath = diff.path.slice(vaultPath.length);
+            if (relativePath.startsWith('/')) {
+              relativePath = relativePath.slice(1);
             }
+          }
 
-            const file = this.app.vault.getAbstractFileByPath(relativePath);
-            if (file instanceof TFile) {
-              await this.app.vault.modify(file, newText);
+          const file = this.app.vault.getAbstractFileByPath(relativePath);
+          if (file instanceof TFile) {
+            void this.app.vault.modify(file, newText).then(() => {
               console.debug(`[ChatView] Applied diff to ${relativePath}`);
-            } else {
-              console.error(`[ChatView] File not found: ${relativePath}`);
-            }
-          } catch (err) {
-            console.error("[ChatView] Failed to apply diff:", err);
+            }).catch((err) => {
+              console.error("[ChatView] Failed to apply diff:", err);
+            });
+          } else {
+            console.error(`[ChatView] File not found: ${relativePath}`);
           }
         }
       },
@@ -889,8 +892,8 @@ export class ChatView extends ItemView {
       .trim();
 
     // Trigger resize (but don't re-sync to avoid loop)
-    this.textarea.style.height = "auto";
-    this.textarea.style.height = Math.min(this.textarea.scrollHeight, 200) + "px";
+    this.textarea.style.setProperty("--chat-input-height", "auto");
+    this.textarea.style.setProperty("--chat-input-height", Math.min(this.textarea.scrollHeight, 200) + "px");
   }
 
   /**

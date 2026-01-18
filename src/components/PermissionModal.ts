@@ -59,7 +59,8 @@ export class PermissionModal extends Modal {
       const input = toolCall.rawInput as Record<string, unknown>;
       if (input.command) {
         const cmdEl = toolInfo.createDiv({ cls: "permission-command" });
-        cmdEl.createEl("code").setText(`$ ${input.command}`);
+        const cmdStr = typeof input.command === "string" ? input.command : JSON.stringify(input.command);
+        cmdEl.createEl("code").setText(`$ ${cmdStr}`);
       }
     }
 

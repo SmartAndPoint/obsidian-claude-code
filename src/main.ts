@@ -77,12 +77,12 @@ export default class ClaudeCodePlugin extends Plugin {
       },
       onConnected: () => {
         console.debug("[ACP] Connected");
-        new Notice("Claude Code Integration: Connected");
+        new Notice("Claude Code: connected");
         this.getChatView()?.updateStatus("connected");
       },
       onDisconnected: () => {
         console.debug("[ACP] Disconnected");
-        new Notice("Claude Code Integration: Disconnected");
+        new Notice("Claude Code: disconnected");
         this.getChatView()?.updateStatus("disconnected");
       },
 
@@ -148,9 +148,9 @@ export default class ClaudeCodePlugin extends Plugin {
     });
   }
 
-  async onunload(): Promise<void> {
+  onunload(): void {
     console.debug("Unloading Claude Code plugin");
-    await this.acpClient?.disconnect();
+    void this.acpClient?.disconnect();
   }
 
   async activateChatView(): Promise<void> {

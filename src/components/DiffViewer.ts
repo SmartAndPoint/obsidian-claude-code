@@ -400,7 +400,7 @@ export class DiffModal extends Modal {
     const actions = header.createDiv({ cls: "diff-modal-actions" });
 
     const acceptAllBtn = actions.createEl("button", { cls: "diff-modal-btn diff-btn-accept" });
-    acceptAllBtn.setText("✓ Accept all");
+    acceptAllBtn.setText("Accept all");
     acceptAllBtn.addEventListener("click", () => {
       this.blocks.forEach(b => {
         b.accepted = true;
@@ -410,7 +410,7 @@ export class DiffModal extends Modal {
     });
 
     const rejectAllBtn = actions.createEl("button", { cls: "diff-modal-btn diff-btn-reject" });
-    rejectAllBtn.setText("✗ Reject all");
+    rejectAllBtn.setText("Reject all");
     rejectAllBtn.addEventListener("click", () => {
       this.blocks.forEach(b => {
         b.accepted = false;
@@ -423,12 +423,13 @@ export class DiffModal extends Modal {
     });
 
     const copyBtn = actions.createEl("button", { cls: "diff-modal-btn" });
-    copyBtn.setText("📋 Copy");
-    copyBtn.addEventListener("click", async () => {
+    copyBtn.setText("Copy");
+    copyBtn.addEventListener("click", () => {
       const diffText = this.generateDiffText();
-      await navigator.clipboard.writeText(diffText);
-      copyBtn.setText("✓ Copied!");
-      setTimeout(() => copyBtn.setText("📋 Copy"), 2000);
+      void navigator.clipboard.writeText(diffText).then(() => {
+        copyBtn.setText("Copied");
+        setTimeout(() => copyBtn.setText("Copy"), 2000);
+      });
     });
 
     // Changes count info
@@ -529,7 +530,7 @@ export class DiffModal extends Modal {
     const actions = td.createDiv({ cls: "diff-block-actions" });
 
     const acceptBtn = actions.createEl("button", { cls: "diff-block-btn diff-block-accept" });
-    acceptBtn.setText("✓ Accept");
+    acceptBtn.setText("Accept");
     acceptBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       block.accepted = true;
@@ -537,7 +538,7 @@ export class DiffModal extends Modal {
     });
 
     const rejectBtn = actions.createEl("button", { cls: "diff-block-btn diff-block-reject" });
-    rejectBtn.setText("✗ Reject");
+    rejectBtn.setText("Reject");
     rejectBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       block.accepted = false;

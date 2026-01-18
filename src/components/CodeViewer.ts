@@ -34,11 +34,12 @@ export class CodeViewerModal extends Modal {
 
     // Copy button
     const copyBtn = header.createEl("button", { cls: "code-viewer-copy" });
-    copyBtn.setText("📋 Copy");
-    copyBtn.addEventListener("click", async () => {
-      await navigator.clipboard.writeText(this.content);
-      copyBtn.setText("✓ Copied!");
-      setTimeout(() => copyBtn.setText("📋 Copy"), 2000);
+    copyBtn.setText("Copy");
+    copyBtn.addEventListener("click", () => {
+      void navigator.clipboard.writeText(this.content).then(() => {
+        copyBtn.setText("Copied");
+        setTimeout(() => copyBtn.setText("Copy"), 2000);
+      });
     });
 
     // Content

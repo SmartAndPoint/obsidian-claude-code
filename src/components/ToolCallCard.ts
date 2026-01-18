@@ -179,7 +179,7 @@ export class ToolCallCard {
     if (this.onViewDiff) {
       const actions = diffContainer.createDiv({ cls: "diff-actions" });
       const viewBtn = actions.createEl("button", { cls: "diff-view-btn" });
-      viewBtn.setText("👁 View full");
+      viewBtn.setText("View diff");
       viewBtn.addEventListener("click", () => {
         if (this.onViewDiff) {
           this.onViewDiff(diff);
@@ -219,7 +219,7 @@ export class ToolCallCard {
         viewLink.href = "#";
         viewLink.addEventListener("click", (e) => {
           e.preventDefault();
-          const modal = new CodeViewerModal(this.app, fullText, "Tool output");
+          const modal = new CodeViewerModal(this.app, fullText, "Output");
           modal.open();
         });
       }
