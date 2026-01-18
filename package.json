@@ -8,6 +8,8 @@
     "build": "node esbuild.config.mjs production",
     "typecheck": "tsc --noEmit",
     "test:headless": "npx tsx tests/headless-test.ts",
+    "test:acp": "npx tsx src/acp-core/__tests__/client.test.ts",
+    "test:acp:integration": "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY npx tsx src/acp-core/__tests__/client.test.ts",
     "version": "node version.mjs"
   },
   "keywords": [
