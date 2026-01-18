@@ -6,14 +6,17 @@
  */
 
 import { App, Modal } from "obsidian";
-import type * as acp from "@agentclientprotocol/sdk";
+import type {
+  PermissionRequestParams,
+  PermissionResponseParams,
+} from "../acpClient";
 
 export class PermissionModal extends Modal {
-  private request: acp.RequestPermissionRequest;
-  private resolvePromise: ((result: acp.RequestPermissionResponse) => void) | null = null;
+  private request: PermissionRequestParams;
+  private resolvePromise: ((result: PermissionResponseParams) => void) | null = null;
   private selectedOptionId: string | null = null;
 
-  constructor(app: App, request: acp.RequestPermissionRequest) {
+  constructor(app: App, request: PermissionRequestParams) {
     super(app);
     this.request = request;
   }
@@ -21,7 +24,7 @@ export class PermissionModal extends Modal {
   /**
    * Open modal and wait for user response
    */
-  async waitForResponse(): Promise<acp.RequestPermissionResponse> {
+  async waitForResponse(): Promise<PermissionResponseParams> {
     return new Promise((resolve) => {
       this.resolvePromise = resolve;
       this.open();
@@ -54,15 +57,7 @@ export class PermissionModal extends Modal {
       }
     }
 
-    // Show raw input if it's a command
-    if (toolCall.rawInput && typeof toolCall.rawInput === "object") {
-      const input = toolCall.rawInput as Record<string, unknown>;
-      if (input.command) {
-        const cmdEl = toolInfo.createDiv({ cls: "permission-command" });
-        const cmdStr = typeof input.command === "string" ? input.command : JSON.stringify(input.command);
-        cmdEl.createEl("code").setText(`$ ${cmdStr}`);
-      }
-    }
+    // Note: rawInput not available in simplified permission type
 
     // Options
     const optionsEl = contentEl.createDiv({ cls: "permission-options" });

@@ -127,6 +127,8 @@ export interface SessionConfig {
   apiKey?: string;
   /** Optional MCP servers to enable */
   mcpServers?: McpServerConfig[];
+  /** Optional path to ACP binary (for native client) */
+  binaryPath?: string;
 }
 
 export interface McpServerConfig {
@@ -617,6 +619,26 @@ export interface DiffHunk {
 export interface ToolCallTerminal {
   type: "terminal";
   terminalId: string;
+}
+
+// SDK-compatible Diff type (oldText/newText format)
+export interface Diff {
+  type: "diff";
+  path?: string;
+  oldText?: string;
+  newText?: string;
+}
+
+// SDK-compatible Terminal type
+export interface Terminal {
+  type: "terminal";
+  terminalId: string;
+}
+
+// SDK-compatible Content type
+export interface Content {
+  type: "content";
+  content: ContentBlock;
 }
 
 export interface ToolCall {

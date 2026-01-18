@@ -1,10 +1,31 @@
-import { spawn, ChildProcess } from "node:child_process";
-import { Writable, Readable } from "node:stream";
+/**
+ * Obsidian ACP Client
+ *
+ * Wrapper around acp-core NativeAcpClient that provides
+ * Obsidian-specific integration and maintains compatibility
+ * with the existing plugin interface.
+ */
+
 import { existsSync, promises as fs } from "node:fs";
-import * as acp from "@agentclientprotocol/sdk";
+import {
+  createAcpClient,
+  type IAcpClient,
+  type AcpClientConfig,
+  type StreamEvent,
+  type SessionUpdate,
+  type PermissionRequest,
+  type PermissionHandler,
+  type ContentBlock,
+  type ToolCallUpdate as AcpToolCallUpdate,
+  type ToolCallUpdateUpdate,
+  type PlanUpdate,
+  type ToolKind,
+  type ToolCallStatus,
+  type ToolCallLocation,
+  type ToolCallContent,
+} from "./acp-core";
 import {
   ensureBinaryAvailable,
-  getSpawnArgs,
   ProgressCallback,
 } from "./binaryManager";
 
@@ -13,19 +34,19 @@ import {
  */
 export interface AcpClientEvents {
   // Message streaming
-  onMessageChunk: (content: acp.ContentBlock) => void;
-  onThoughtChunk: (content: acp.ContentBlock) => void;
+  onMessageChunk: (content: ContentBlock) => void;
+  onThoughtChunk: (content: ContentBlock) => void;
   onMessageComplete: () => void;
 
-  // Tool calls
-  onToolCall: (toolCall: acp.ToolCall & { sessionUpdate: "tool_call" }) => void;
-  onToolCallUpdate: (update: acp.ToolCallUpdate & { sessionUpdate: "tool_call_update" }) => void;
+  // Tool calls - use SDK-compatible types
+  onToolCall: (toolCall: ToolCallData & { sessionUpdate: "tool_call" }) => void;
+  onToolCallUpdate: (update: ToolCallUpdateData & { sessionUpdate: "tool_call_update" }) => void;
 
   // Plan
-  onPlan: (plan: acp.Plan & { sessionUpdate: "plan" }) => void;
+  onPlan: (plan: PlanData & { sessionUpdate: "plan" }) => void;
 
   // Permission
-  onPermissionRequest: (params: acp.RequestPermissionRequest) => Promise<acp.RequestPermissionResponse>;
+  onPermissionRequest: (params: PermissionRequestParams) => Promise<PermissionResponseParams>;
 
   // Connection lifecycle
   onError: (error: Error) => void;
@@ -36,114 +57,61 @@ export interface AcpClientEvents {
   onMessage?: (text: string) => void;
 }
 
-export class ObsidianAcpClient implements acp.Client {
-  private process: ChildProcess | null = null;
-  private connection: acp.ClientSideConnection | null = null;
+// Types that match the SDK's structure
+export interface ToolCallData {
+  toolCallId: string;
+  title: string;
+  kind?: ToolKind;
+  status?: ToolCallStatus;
+  locations?: ToolCallLocation[];
+  content?: ToolCallContent[];
+}
+
+export interface ToolCallUpdateData {
+  toolCallId: string;
+  title?: string;
+  kind?: ToolKind;
+  status?: ToolCallStatus;
+  locations?: ToolCallLocation[];
+  content?: ToolCallContent[];
+}
+
+export interface PlanEntry {
+  content: string;
+  status: "pending" | "in_progress" | "completed";
+  priority?: "high" | "medium" | "low";
+}
+
+export interface PlanData {
+  entries: PlanEntry[];
+}
+
+export interface PermissionRequestParams {
+  toolCall: {
+    toolCallId: string;
+    title?: string;
+    kind?: ToolKind;
+    status?: ToolCallStatus;
+    locations?: ToolCallLocation[];
+  };
+  options: Array<{
+    optionId: string;
+    name: string;
+    kind: "allow_once" | "allow_always" | "reject_once" | "reject_always";
+  }>;
+}
+
+export interface PermissionResponseParams {
+  outcome: { outcome: "cancelled" } | { outcome: "selected"; optionId: string };
+}
+
+export class ObsidianAcpClient {
+  private client: IAcpClient | null = null;
   private currentSessionId: string | null = null;
   private events: AcpClientEvents;
 
   constructor(events: AcpClientEvents) {
     this.events = events;
-  }
-
-  // ACP Client interface implementation
-  async requestPermission(
-    params: acp.RequestPermissionRequest
-  ): Promise<acp.RequestPermissionResponse> {
-    return this.events.onPermissionRequest(params);
-  }
-
-  async sessionUpdate(params: acp.SessionNotification): Promise<void> {
-    await Promise.resolve(); // Required for ACP Client interface
-    const update = params.update;
-
-    switch (update.sessionUpdate) {
-      case "agent_message_chunk":
-        // New Phase 4.1 handler
-        this.events.onMessageChunk(update.content);
-        // Legacy fallback
-        if (this.events.onMessage && update.content.type === "text") {
-          this.events.onMessage(update.content.text ?? "");
-        }
-        break;
-
-      case "agent_thought_chunk":
-        this.events.onThoughtChunk(update.content);
-        break;
-
-      case "tool_call":
-        this.events.onToolCall(update);
-        break;
-
-      case "tool_call_update":
-        this.events.onToolCallUpdate(update);
-        break;
-
-      case "plan":
-        this.events.onPlan(update);
-        break;
-
-      case "user_message_chunk":
-        // Echo of user message, typically ignored
-        console.debug("[ACP] User message echo:", update.content);
-        break;
-
-      case "available_commands_update":
-      case "current_mode_update":
-      case "config_option_update":
-      case "session_info_update":
-        // These are informational updates, log for now
-        console.debug(`[ACP] ${update.sessionUpdate}:`, update);
-        break;
-
-      default:
-        console.debug("[ACP] Unknown session update:", update);
-        break;
-    }
-  }
-
-  async writeTextFile(
-    params: acp.WriteTextFileRequest
-  ): Promise<acp.WriteTextFileResponse> {
-    const filePath = params.path;
-    console.debug("[ACP] writeTextFile:", filePath);
-
-    try {
-      await fs.writeFile(filePath, params.content, { encoding: "utf-8" });
-      console.debug("[ACP] writeTextFile: success");
-      return {};
-    } catch (error) {
-      const err = error as NodeJS.ErrnoException;
-      console.error("[ACP] writeTextFile error:", err.message);
-      // Return empty response - ACP protocol doesn't have error field
-      // Agent will see the file wasn't written and can retry or report
-      return {};
-    }
-  }
-
-  async readTextFile(
-    params: acp.ReadTextFileRequest
-  ): Promise<acp.ReadTextFileResponse> {
-    const filePath = params.path;
-    console.debug("[ACP] readTextFile:", filePath);
-
-    try {
-      // Check if file exists first
-      if (!existsSync(filePath)) {
-        console.warn("[ACP] readTextFile: file not found:", filePath);
-        return { content: "" };
-      }
-
-      // Read file with UTF-8 encoding
-      const content = await fs.readFile(filePath, { encoding: "utf-8" });
-      console.debug(`[ACP] readTextFile: success, ${content.length} chars`);
-      return { content };
-    } catch (error) {
-      const err = error as NodeJS.ErrnoException;
-      console.error("[ACP] readTextFile error:", err.message);
-      // Return empty content on error
-      return { content: "" };
-    }
   }
 
   async connect(
@@ -161,121 +129,234 @@ export class ObsidianAcpClient implements acp.Client {
         throw new Error("Failed to find or download claude-code-acp binary. Please install Node.js and npm.");
       }
 
-      const spawnArgs = getSpawnArgs(binaryInfo);
       console.debug(`[ACP] Using binary: ${binaryInfo.path} (${binaryInfo.type})`);
-      console.debug(`[ACP] Spawn command: ${spawnArgs.command} ${spawnArgs.args.join(" ")}`);
 
-      // Check for API key
-      const anthropicKey = apiKey || process.env.ANTHROPIC_API_KEY;
-      if (!anthropicKey) {
-        console.warn("[ACP] Warning: ANTHROPIC_API_KEY not found in environment");
-      } else {
-        console.debug("[ACP] API key found");
-      }
+      // Create permission handler that delegates to events
+      const permissionHandler: PermissionHandler = async (request: PermissionRequest) => {
+        // Convert our internal PermissionRequest to SDK-compatible format
+        const sdkRequest: PermissionRequestParams = {
+          toolCall: {
+            toolCallId: request.toolCall.id,
+            title: request.toolCall.title,
+            kind: request.toolCall.kind,
+            status: request.toolCall.status,
+            locations: request.toolCall.locations?.map(path => ({ path })),
+          },
+          options: request.options ?? [
+            { optionId: "allow_once", name: "Allow once", kind: "allow_once" },
+            { optionId: "reject_once", name: "Reject", kind: "reject_once" },
+          ],
+        };
 
-      // Spawn claude-code-acp process
-      this.process = spawn(spawnArgs.command, spawnArgs.args, {
-        stdio: ["pipe", "pipe", "pipe"], // capture stderr too
-        cwd: workingDirectory,
-        env: {
-          ...process.env,
-          ANTHROPIC_API_KEY: anthropicKey,
-          // Ensure PATH includes common binary locations
-          PATH: `${process.env.PATH || ""}:/opt/homebrew/bin:/usr/local/bin`,
+        const response = await this.events.onPermissionRequest(sdkRequest);
+
+        if (response.outcome.outcome === "selected") {
+          const optionId = response.outcome.optionId;
+          const selectedOption = sdkRequest.options.find(o => o.optionId === optionId);
+          const isAllow = selectedOption?.kind.includes("allow");
+          return { granted: isAllow ?? false, optionId };
+        }
+        return { granted: false };
+      };
+
+      // Create the ACP client config
+      const config: AcpClientConfig = {
+        permissionHandler,
+        onEvent: (event: StreamEvent) => this.handleStreamEvent(event),
+        onSessionUpdate: (update: SessionUpdate) => this.handleSessionUpdate(update),
+        onConnect: () => {
+          this.events.onConnected();
         },
-      });
-
-      // Log process events
-      this.process.on("error", (err) => {
-        console.error("[ACP] Process error:", err);
-        this.events.onError(err);
-      });
-
-      this.process.on("exit", (code, signal) => {
-        console.debug(`[ACP] Process exited: code=${code}, signal=${signal}`);
-      });
-
-      this.process.stderr?.on("data", (data: Buffer) => {
-        console.debug("[ACP stderr]", data.toString());
-      });
-
-      if (!this.process.stdin || !this.process.stdout) {
-        throw new Error("Failed to get process streams");
-      }
-
-      console.debug("[ACP] Process spawned, creating connection...");
-
-      const input = Writable.toWeb(this.process.stdin);
-      const output = Readable.toWeb(this.process.stdout) as ReadableStream<Uint8Array>;
-
-      const stream = acp.ndJsonStream(input, output);
-      this.connection = new acp.ClientSideConnection((_agent) => this, stream);
-
-      console.debug("[ACP] Initializing connection...");
-
-      // Initialize connection
-      const initResult = await this.connection.initialize({
-        protocolVersion: acp.PROTOCOL_VERSION,
-        clientCapabilities: {
-          fs: {
-            readTextFile: true,
-            writeTextFile: true,
+        onDisconnect: () => {
+          this.events.onDisconnected();
+        },
+        onError: (error: Error) => {
+          this.events.onError(error);
+        },
+        // Provide file system handlers
+        fileSystem: {
+          readFile: async (path: string) => {
+            if (!existsSync(path)) {
+              return "";
+            }
+            return fs.readFile(path, { encoding: "utf-8" });
+          },
+          writeFile: async (path: string, content: string) => {
+            await fs.writeFile(path, content, { encoding: "utf-8" });
+          },
+          exists: async (path: string) => {
+            return existsSync(path);
           },
         },
-      });
+      };
 
-      console.debug(`[ACP] Connected, protocol v${initResult.protocolVersion}`);
+      // Create the client using acp-core factory with native implementation
+      this.client = createAcpClient(config, "native");
 
-      // Create session
-      const sessionResult = await this.connection.newSession({
+      // Connect with session config
+      const session = await this.client.connect({
         cwd: workingDirectory,
+        apiKey: apiKey ?? process.env.ANTHROPIC_API_KEY,
+        binaryPath: binaryInfo.path,
         mcpServers: [],
       });
 
-      this.currentSessionId = sessionResult.sessionId;
-      console.debug(`[ACP] Session created: ${this.currentSessionId}`);
-
-      this.events.onConnected();
+      this.currentSessionId = session.id;
+      console.debug(`[ACP] Connected, session: ${this.currentSessionId}`);
     } catch (error) {
       this.events.onError(error as Error);
       throw error;
     }
   }
 
+  private handleStreamEvent(event: StreamEvent): void {
+    switch (event.type) {
+      case "text_delta":
+        // Convert to ContentBlock for message chunk
+        this.events.onMessageChunk({
+          type: "text",
+          text: event.text,
+        });
+        // Legacy fallback
+        this.events.onMessage?.(event.text);
+        break;
+
+      case "thinking_delta":
+        this.events.onThoughtChunk({
+          type: "text",
+          text: event.text,
+        });
+        break;
+
+      case "tool_call_start":
+        this.events.onToolCall({
+          sessionUpdate: "tool_call",
+          toolCallId: event.toolCallId,
+          title: event.title ?? event.toolName,
+          kind: event.kind,
+          status: "in_progress",
+          locations: event.locations,
+        });
+        break;
+
+      case "tool_call_delta":
+        this.events.onToolCallUpdate({
+          sessionUpdate: "tool_call_update",
+          toolCallId: event.toolCallId,
+          status: event.status,
+          content: event.content,
+        });
+        break;
+
+      case "tool_call_complete":
+        this.events.onToolCallUpdate({
+          sessionUpdate: "tool_call_update",
+          toolCallId: event.toolCallId,
+          status: event.isError ? "failed" : "completed",
+        });
+        break;
+
+      case "plan":
+        this.events.onPlan({
+          sessionUpdate: "plan",
+          entries: event.entries.map(e => ({
+            content: e.title,
+            status: e.status,
+            priority: e.priority,
+          })),
+        });
+        break;
+
+      case "message_complete":
+        this.events.onMessageComplete();
+        break;
+
+      case "error":
+        this.events.onError(event.error);
+        break;
+
+      default:
+        console.debug("[ACP] Unhandled stream event:", event);
+    }
+  }
+
+  private handleSessionUpdate(update: SessionUpdate): void {
+    switch (update.sessionUpdate) {
+      case "agent_message_chunk":
+        this.events.onMessageChunk(update.content);
+        // Legacy fallback
+        if (update.content.type === "text") {
+          this.events.onMessage?.(update.content.text ?? "");
+        }
+        break;
+
+      case "agent_thought_chunk":
+        this.events.onThoughtChunk(update.content);
+        break;
+
+      case "tool_call":
+        this.events.onToolCall({
+          ...(update as AcpToolCallUpdate),
+          sessionUpdate: "tool_call",
+        });
+        break;
+
+      case "tool_call_update":
+        this.events.onToolCallUpdate({
+          ...(update as ToolCallUpdateUpdate),
+          sessionUpdate: "tool_call_update",
+        });
+        break;
+
+      case "plan":
+        const planUpdate = update as PlanUpdate;
+        this.events.onPlan({
+          sessionUpdate: "plan",
+          entries: planUpdate.entries.map(e => ({
+            content: e.title,
+            status: e.status,
+            priority: e.priority,
+          })),
+        });
+        break;
+
+      case "user_message_chunk":
+        console.debug("[ACP] User message echo:", update.content);
+        break;
+
+      case "available_commands_update":
+      case "current_mode_update":
+      case "config_option_update":
+      case "session_info_update":
+        console.debug(`[ACP] ${update.sessionUpdate}:`, update);
+        break;
+
+      default:
+        console.debug("[ACP] Unknown session update:", update);
+    }
+  }
+
   async sendMessage(text: string): Promise<void> {
-    if (!this.connection || !this.currentSessionId) {
+    if (!this.client || !this.currentSessionId) {
       throw new Error("Not connected");
     }
 
-    const result = await this.connection.prompt({
-      sessionId: this.currentSessionId,
-      prompt: [
-        {
-          type: "text",
-          text: text,
-        },
-      ],
-    });
-
-    console.debug(`[ACP] Prompt completed: ${result.stopReason}`);
-
-    // Signal message completion
-    this.events.onMessageComplete();
+    // Use the streaming interface and consume all events
+    for await (const event of this.client.sendMessage(text)) {
+      this.handleStreamEvent(event);
+    }
   }
 
   async disconnect(): Promise<void> {
-    await Promise.resolve(); // Required for async interface
-    if (this.process) {
-      this.process.kill();
-      this.process = null;
+    if (this.client) {
+      await this.client.disconnect();
+      this.client = null;
     }
-    this.connection = null;
     this.currentSessionId = null;
-    this.events.onDisconnected();
   }
 
   isConnected(): boolean {
-    return this.connection !== null && this.currentSessionId !== null;
+    return this.client?.isConnected() ?? false;
   }
 
   getSessionId(): string | null {

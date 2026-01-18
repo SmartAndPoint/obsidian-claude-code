@@ -4,7 +4,17 @@
  * Shows tool name, parameters, status, and optional content (diff, terminal output).
  */
 
-import type * as acp from "@agentclientprotocol/sdk";
+import type {
+  ToolCallStatus,
+  ToolCallContent,
+  Diff,
+  Terminal,
+  Content,
+} from "../acp-core";
+import type {
+  ToolCallData,
+  ToolCallUpdateData,
+} from "../acpClient";
 import { App } from "obsidian";
 import { CodeViewerModal } from "./CodeViewer";
 import { createClickablePath } from "./PathFormatter";
@@ -35,14 +45,14 @@ export class ToolCallCard {
   private contentArea: HTMLElement;
   private toolCallId: string;
   private app: App;
-  private onViewDiff?: (diff: acp.Diff) => void;
+  private onViewDiff?: (diff: Diff) => void;
 
   constructor(
     parent: HTMLElement,
-    toolCall: acp.ToolCall & { sessionUpdate: "tool_call" },
+    toolCall: ToolCallData & { sessionUpdate: "tool_call" },
     app: App,
     options?: {
-      onViewDiff?: (diff: acp.Diff) => void;
+      onViewDiff?: (diff: Diff) => void;
     }
   ) {
     this.toolCallId = toolCall.toolCallId ?? "unknown";
@@ -87,7 +97,7 @@ export class ToolCallCard {
     }
   }
 
-  updateStatus(status: acp.ToolCallStatus): void {
+  updateStatus(status: ToolCallStatus): void {
     this.statusEl.empty();
     this.statusEl.removeClass("status-pending", "status-in_progress", "status-completed", "status-failed");
     this.statusEl.addClass(`status-${status}`);
@@ -99,7 +109,7 @@ export class ToolCallCard {
     text.setText(status.replace("_", " "));
   }
 
-  update(update: acp.ToolCallUpdate & { sessionUpdate: "tool_call_update" }): void {
+  update(update: ToolCallUpdateData & { sessionUpdate: "tool_call_update" }): void {
     if (update.status) {
       this.updateStatus(update.status);
     }
@@ -116,22 +126,22 @@ export class ToolCallCard {
     }
   }
 
-  private renderContent(content: acp.ToolCallContent[]): void {
+  private renderContent(content: ToolCallContent[]): void {
     this.contentArea.empty();
     this.contentArea.removeClass("is-hidden");
 
     for (const item of content) {
       if (item.type === "diff") {
-        this.renderDiff(item);
+        this.renderDiff(item as unknown as Diff);
       } else if (item.type === "terminal") {
-        this.renderTerminal(item);
+        this.renderTerminal(item as unknown as Terminal);
       } else if (item.type === "content") {
-        this.renderTextContent(item);
+        this.renderTextContent(item as unknown as Content);
       }
     }
   }
 
-  private renderDiff(diff: acp.Diff & { type: "diff" }): void {
+  private renderDiff(diff: Diff): void {
     const diffContainer = this.contentArea.createDiv({ cls: "tool-card-diff" });
 
     // Diff header - with clickable path
@@ -188,7 +198,7 @@ export class ToolCallCard {
     }
   }
 
-  private renderTerminal(terminal: acp.Terminal & { type: "terminal" }): void {
+  private renderTerminal(terminal: Terminal): void {
     const termContainer = this.contentArea.createDiv({ cls: "tool-card-terminal" });
 
     // Terminal ID
@@ -199,7 +209,7 @@ export class ToolCallCard {
     // Command output would come from TerminalOutputResponse via separate request
   }
 
-  private renderTextContent(content: acp.Content & { type: "content" }): void {
+  private renderTextContent(content: Content): void {
     const textContainer = this.contentArea.createDiv({ cls: "tool-card-text" });
 
     // Content.content is a single ContentBlock, not an array

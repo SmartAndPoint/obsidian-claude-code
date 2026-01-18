@@ -46,12 +46,12 @@ export {
 } from "./factory";
 
 // Adapters
-export { createZedAdapter, ZedAcpAdapter } from "./adapters";
+export { createZedAdapter, ZedAcpAdapter, createNativeClient, NativeAcpClient } from "./adapters";
 
-// Future: Initialize default implementations
-// This will be called when the package is imported
+// Initialize implementations when the package is imported
 import { registerImplementation } from "./factory";
-import { createZedAdapter } from "./adapters";
+import { createZedAdapter, createNativeClient } from "./adapters";
 
-// Auto-register Zed adapter as default
+// Auto-register adapters
 registerImplementation("zed", createZedAdapter);
+registerImplementation("native", createNativeClient);

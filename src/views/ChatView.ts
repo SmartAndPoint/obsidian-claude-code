@@ -1,6 +1,20 @@
 import { ItemView, WorkspaceLeaf, MarkdownRenderer, setIcon, MarkdownView } from "obsidian";
 import type ClaudeCodePlugin from "../main";
-import type * as acp from "@agentclientprotocol/sdk";
+import type {
+  ContentBlock,
+  ToolKind,
+  ToolCallStatus,
+  ToolCallLocation,
+  ToolCallContent,
+  Diff,
+} from "../acp-core";
+import type {
+  ToolCallData,
+  ToolCallUpdateData,
+  PlanData,
+  PermissionRequestParams,
+  PermissionResponseParams,
+} from "../acpClient";
 import { TFile } from "obsidian";
 import { ThinkingBlock, ToolCallCard, PermissionCard, collapseCodeBlocks, FileSuggest, resolveFileReferences, SelectionChipsContainer, formatAgentPaths, DiffModal } from "../components";
 
@@ -43,18 +57,18 @@ export class ChatView extends ItemView {
   // Pending Edit tool calls by file path (for batching)
   private pendingEditsByFile: Map<string, Array<{
     toolCallId: string;
-    toolCall: acp.ToolCall;
+    toolCall: ToolCallData & { sessionUpdate: "tool_call" };
     card: ToolCallCard;
   }>> = new Map();
 
   // Pending permission requests by file (for batching)
   private pendingPermissionsByFile: Map<string, Array<{
-    request: acp.RequestPermissionRequest;
-    resolve: (response: acp.RequestPermissionResponse) => void;
+    request: PermissionRequestParams;
+    resolve: (response: PermissionResponseParams) => void;
   }>> = new Map();
 
   // Auto-approved files: once user approves one edit, auto-approve rest for same file
-  private autoApprovedFiles: Map<string, acp.RequestPermissionResponse> = new Map();
+  private autoApprovedFiles: Map<string, PermissionResponseParams> = new Map();
 
   // Active permission cards (for cleanup)
   private activePermissionCards: PermissionCard[] = [];
@@ -302,7 +316,7 @@ export class ChatView extends ItemView {
   /**
    * Handle agent thought chunk (internal reasoning)
    */
-  onThoughtChunk(content: acp.ContentBlock): void {
+  onThoughtChunk(content: ContentBlock): void {
     if (content.type !== "text") return;
 
     // Create thinking block if not exists
@@ -317,7 +331,7 @@ export class ChatView extends ItemView {
   /**
    * Handle agent message chunk (final response)
    */
-  onMessageChunk(content: acp.ContentBlock): void {
+  onMessageChunk(content: ContentBlock): void {
     if (content.type !== "text") return;
 
     const rawText = content.text ?? "";
@@ -351,7 +365,7 @@ export class ChatView extends ItemView {
   /**
    * Handle new tool call
    */
-  onToolCall(toolCall: acp.ToolCall & { sessionUpdate: "tool_call" }): void {
+  onToolCall(toolCall: ToolCallData & { sessionUpdate: "tool_call" }): void {
     const toolCallId = toolCall.toolCallId ?? `tool-${Date.now()}`;
 
     // Mark that we need paragraph break after tool call
@@ -394,7 +408,7 @@ export class ChatView extends ItemView {
   /**
    * Handle tool call update
    */
-  onToolCallUpdate(update: acp.ToolCallUpdate & { sessionUpdate: "tool_call_update" }): void {
+  onToolCallUpdate(update: ToolCallUpdateData & { sessionUpdate: "tool_call_update" }): void {
     const toolCallId = update.toolCallId ?? "";
     console.debug(`[ChatView] onToolCallUpdate:`, { toolCallId, status: update.status, content: update.content });
     const card = this.toolCallCards.get(toolCallId);
@@ -433,7 +447,7 @@ export class ChatView extends ItemView {
   /**
    * Handle plan update
    */
-  onPlan(plan: acp.Plan & { sessionUpdate: "plan" }): void {
+  onPlan(plan: PlanData & { sessionUpdate: "plan" }): void {
     // Create or update plan display
     let planEl = this.messagesContainer.querySelector(".plan-view") as HTMLElement;
 
@@ -474,7 +488,7 @@ export class ChatView extends ItemView {
    * Since ACP sends permission requests sequentially (waits for response before next),
    * we use auto-approve: first approval for a file auto-approves subsequent edits.
    */
-  async onPermissionRequest(request: acp.RequestPermissionRequest): Promise<acp.RequestPermissionResponse> {
+  async onPermissionRequest(request: PermissionRequestParams): Promise<PermissionResponseParams> {
     const toolCall = request.toolCall;
 
     // Extract file path from locations or parse from title
@@ -518,12 +532,12 @@ export class ChatView extends ItemView {
    * Shows "(1 of N)" and stores approval for auto-approve of rest
    */
   private async handleMultiEditPermission(
-    request: acp.RequestPermissionRequest,
+    request: PermissionRequestParams,
     filePath: string,
     totalChanges: number
-  ): Promise<acp.RequestPermissionResponse> {
+  ): Promise<PermissionResponseParams> {
     // Create a modified request that shows the count
-    const modifiedRequest: acp.RequestPermissionRequest = {
+    const modifiedRequest: PermissionRequestParams = {
       ...request,
       toolCall: {
         ...request.toolCall,
@@ -563,7 +577,7 @@ export class ChatView extends ItemView {
   /**
    * Handle single permission request (non-edit or single edit)
    */
-  private async handleSinglePermission(request: acp.RequestPermissionRequest): Promise<acp.RequestPermissionResponse> {
+  private async handleSinglePermission(request: PermissionRequestParams): Promise<PermissionResponseParams> {
     const card = new PermissionCard(this.messagesContainer, request);
     this.activePermissionCards.push(card);
     this.scrollToBottom();
@@ -805,7 +819,7 @@ export class ChatView extends ItemView {
     });
   }
 
-  private showDiffModal(diff: acp.Diff): void {
+  private showDiffModal(diff: Diff): void {
     const modal = new DiffModal(this.app, diff, {
       onApply: (newText: string) => {
         // Apply changes directly via Obsidian API

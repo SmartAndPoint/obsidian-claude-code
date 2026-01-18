@@ -5,17 +5,20 @@
  * instead of a blocking modal dialog.
  */
 
-import type * as acp from "@agentclientprotocol/sdk";
+import type {
+  PermissionRequestParams,
+  PermissionResponseParams,
+} from "../acpClient";
 
 export class PermissionCard {
   private container: HTMLElement;
-  private resolvePromise: ((result: acp.RequestPermissionResponse) => void) | null = null;
-  private request: acp.RequestPermissionRequest;
+  private resolvePromise: ((result: PermissionResponseParams) => void) | null = null;
+  private request: PermissionRequestParams;
   private isResolved: boolean = false;
 
   constructor(
     parent: HTMLElement,
-    request: acp.RequestPermissionRequest
+    request: PermissionRequestParams
   ) {
     this.request = request;
     this.container = parent.createDiv({ cls: "permission-card" });
@@ -25,7 +28,7 @@ export class PermissionCard {
   /**
    * Wait for user response
    */
-  async waitForResponse(): Promise<acp.RequestPermissionResponse> {
+  async waitForResponse(): Promise<PermissionResponseParams> {
     return new Promise((resolve) => {
       this.resolvePromise = resolve;
     });
@@ -54,16 +57,6 @@ export class PermissionCard {
       for (const loc of toolCall.locations) {
         const pathEl = pathsEl.createDiv({ cls: "permission-card-path" });
         pathEl.setText(`📄 ${loc.path}${loc.line ? `:${loc.line}` : ""}`);
-      }
-    }
-
-    // Command preview
-    if (toolCall.rawInput && typeof toolCall.rawInput === "object") {
-      const input = toolCall.rawInput as Record<string, unknown>;
-      if (input.command) {
-        const cmdEl = content.createDiv({ cls: "permission-card-command" });
-        const cmdStr = typeof input.command === "string" ? input.command : JSON.stringify(input.command);
-        cmdEl.createEl("code").setText(`$ ${cmdStr}`);
       }
     }
 

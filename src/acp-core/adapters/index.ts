@@ -6,5 +6,5 @@
 
 export { ZedAcpAdapter, createZedAdapter } from "./zed-adapter";
 
-// Future: Native adapter
-// export { NativeAcpClient, createNativeClient } from "./native-client";
+// Native adapter
+export { NativeAcpClient, createNativeClient } from "./native-client";

@@ -11,7 +11,7 @@
  */
 
 import { App, Modal, TFile } from "obsidian";
-import type * as acp from "@agentclientprotocol/sdk";
+import type { Diff } from "../acp-core";
 import { createClickablePath } from "./PathFormatter";
 
 interface DiffLine {
@@ -273,7 +273,7 @@ function getRelativePath(app: App, absolutePath: string): string {
  * Modal for viewing full file diff with inline changes (Cursor-style)
  */
 export class DiffModal extends Modal {
-  private diff: acp.Diff;
+  private diff: Diff;
   private fullOldText: string = "";
   private fullNewText: string = "";
   private diffLines: DiffLine[] = [];
@@ -285,7 +285,7 @@ export class DiffModal extends Modal {
 
   constructor(
     app: App,
-    diff: acp.Diff,
+    diff: Diff,
     options?: {
       onApply?: (newText: string) => void;
       onReject?: () => void;
@@ -612,7 +612,7 @@ export class DiffModal extends Modal {
 export class DiffViewer {
   private container: HTMLElement;
 
-  constructor(parent: HTMLElement, diff: acp.Diff) {
+  constructor(parent: HTMLElement, diff: Diff) {
     this.container = parent.createDiv({ cls: "diff-viewer" });
 
     const header = this.container.createDiv({ cls: "diff-viewer-header" });

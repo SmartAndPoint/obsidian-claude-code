@@ -118,6 +118,9 @@ export type {
   ToolCallDiff,
   DiffHunk,
   ToolCallTerminal,
+  Diff,
+  Terminal,
+  Content,
   ToolCall,
   ToolResult,
 
