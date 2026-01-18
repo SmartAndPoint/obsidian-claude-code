@@ -1,6 +1,6 @@
 {
   "name": "obsidian-claude-code-integration",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Claude Code Integration for Obsidian via ACP (Agent Client Protocol)",
   "main": "main.js",
   "scripts": {
