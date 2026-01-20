@@ -178,13 +178,19 @@ GitHub Actions will automatically create the release with `main.js`, `manifest.j
 ### Commit Message Format
 
 ```
-Release X.Y.Z: Short description
+type: Short description
 
 - Detail 1
 - Detail 2
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Maintainer: ekonev@smartandpoint.com
 ```
+
+**Types**: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `release`
+
+**Rules**:
+- NO Co-Authored-By references to Anthropic/Claude
+- Always include `Maintainer: ekonev@smartandpoint.com`
 
 ### Version Semantics
 
@@ -192,9 +198,10 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 - **minor** (0.X.0): New features, backwards compatible
 - **major** (X.0.0): Breaking changes
 
-## Current Version: 1.0.9
+## Current Version: 1.0.12
 
 - acp-core module with 209 tests
 - NativeAcpClient implementation
 - Plugin fully migrated to acp-core
-- PR #9593 awaiting approval in obsidian-releases
+- ESLint with obsidianmd rules (same as Review Bot)
+- Repository moved to SmartAndPoint organization
