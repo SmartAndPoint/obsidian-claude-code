@@ -172,6 +172,12 @@ The `/` prefix triggers command autocomplete with both built-in commands and ACP
 
 **IMPORTANT**: Before creating any PR to this repository, always ask the maintainer for review first!
 
+### Git Operations
+
+**IMPORTANT**: Claude Code must NOT automatically run `git add`, `git commit`, or `git push` without explicit maintainer approval!
+
+Always show the changes and ask for review before any git operation. The maintainer must confirm before committing or pushing code.
+
 ### Release Process
 
 **IMPORTANT**: Always use `npm run version` script, never edit version manually!
@@ -223,6 +229,16 @@ Maintainer: ekonev@smartandpoint.com
 - **major** (X.0.0): Breaking changes
 
 ## Code Quality
+
+### Mandatory Linting
+
+**IMPORTANT**: Always run `npm run lint` at these checkpoints:
+- After implementing any code changes
+- Before completing any feature or fix
+- Before any release
+- Before any git commit
+
+This is an Obsidian plugin — the Review Bot uses the same `eslint-plugin-obsidianmd` rules to validate PRs. Catching lint errors early prevents PR rejections.
 
 ### ESLint Setup
 The project uses `eslint-plugin-obsidianmd` with the same rules as Obsidian's Review Bot. This ensures code passes automated checks before PR submission.
