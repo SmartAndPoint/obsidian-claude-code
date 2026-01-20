@@ -2,11 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Goal
+## Project Overview
 
-**obsidian-claude-code-plugin** — Obsidian плагин, реализующий ACP-клиент для интеграции с Claude Code.
+**obsidian-claude-code** — An Obsidian plugin implementing an ACP client for Claude Code integration.
 
-Плагин позволяет использовать полноценный Claude Code агент прямо в Obsidian, аналогично интеграции в Zed или Cursor. Это не просто чат с API — это agentic workflow с tool calls, permission requests, edit review и доступом к файлам vault.
+The plugin enables the full Claude Code agent experience directly in Obsidian, similar to integrations in Zed or Cursor. This is not just a simple chat with the API — it's a complete agentic workflow with tool calls, permission requests, edit review, and vault file access.
+
+**Repository**: https://github.com/SmartAndPoint/obsidian-claude-code
+**Maintainer**: Evgenii Konev <ekonev@smartandpoint.com>
 
 ## Architecture
 
@@ -47,11 +50,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Key Technologies
 
-- **ACP (Agent Client Protocol)** — протокол коммуникации между редакторами и AI-агентами
-- **acp-core** — внутренний модуль с типами и реализациями ACP клиента
-- **claude-code-acp** — ACP-сервер, оборачивающий Claude Code SDK
-- **@agentclientprotocol/sdk** — TypeScript SDK для создания ACP-клиентов
-- **Obsidian Plugin API** — API для создания плагинов Obsidian
+- **ACP (Agent Client Protocol)** — Communication protocol between editors and AI agents
+- **acp-core** — Internal module with types and ACP client implementations
+- **claude-code-acp** — ACP server wrapping the Claude Code SDK
+- **@agentclientprotocol/sdk** — TypeScript SDK for creating ACP clients
+- **Obsidian Plugin API** — API for creating Obsidian plugins
 
 ## Project Structure
 
@@ -77,14 +80,19 @@ src/
 │   ├── ThinkingBlock.ts       # Collapsible thinking display
 │   ├── ToolCallCard.ts        # Tool call status cards
 │   ├── PermissionCard.ts      # Inline permission requests
+│   ├── PermissionModal.ts     # Full-screen permission dialog
 │   ├── DiffViewer.ts          # Full-file diff modal
-│   └── ...
+│   ├── CodeViewer.ts          # Code block viewer with syntax highlighting
+│   ├── FileSuggest.ts         # [[ file autocomplete
+│   ├── CommandSuggest.ts      # / slash command autocomplete
+│   └── PathFormatter.ts       # File path formatting utilities
 └── views/
     └── ChatView.ts            # Main chat interface
 
 tests/
 └── headless-test.ts           # Standalone ACP connection test
 
+eslint.config.mjs              # ESLint config (obsidianmd rules)
 styles.css                     # Chat UI styles
 manifest.json                  # Obsidian plugin manifest
 ```
@@ -95,20 +103,29 @@ manifest.json                  # Obsidian plugin manifest
 # Install dependencies
 npm install
 
-# Build plugin
+# Lint code (uses obsidianmd rules - same as Review Bot)
+npm run lint
+
+# Auto-fix lint issues
+npm run lint:fix
+
+# Type check
+npm run typecheck
+
+# Build plugin (runs lint + typecheck + esbuild)
 npm run build
 
 # Development mode with watch
 npm run dev
-
-# Type check
-npm run typecheck
 
 # Run ACP tests (209 tests)
 npm run test:acp
 
 # Headless ACP test (no Obsidian needed)
 npm run test:headless
+
+# Bump version (runs lint + typecheck first)
+npm run version patch|minor|major
 ```
 
 ## Testing in Obsidian
@@ -121,54 +138,61 @@ npm run test:headless
 ## Key Concepts
 
 ### acp-core Module
-Внутренний модуль с чистой архитектурой:
-- `IAcpClient` - интерфейс для всех реализаций
-- `NativeAcpClient` - основная реализация
-- `createAcpClient()` - фабрика с DI
-- 209 тестов покрывают 100% публичного API
+Internal module with clean architecture:
+- `IAcpClient` — Interface for all implementations
+- `NativeAcpClient` — Main implementation
+- `createAcpClient()` — Factory with dependency injection
+- 209 tests covering 100% of public API
 
 ### ACP Transport
-Плагин спавнит `claude-code-acp` как child process и общается через JSON-RPC over stdio.
+The plugin spawns `claude-code-acp` as a child process and communicates via JSON-RPC over stdio.
 
 ### Vault Integration
-Файлы vault маппятся на ACP file system protocol. `[[` синтаксис позволяет добавлять заметки в контекст.
+Vault files are mapped to the ACP file system protocol. The `[[` syntax allows adding notes to context.
 
 ### Permission Model
-Tool calls требуют подтверждения пользователя через inline PermissionCard.
+Tool calls require user confirmation through inline PermissionCard.
+
+### Slash Commands
+The `/` prefix triggers command autocomplete with both built-in commands and ACP-provided commands from Claude Code.
 
 ## Development Workflow
 
 ### Making Changes
 
-1. **Implement feature/fix** - write code
-2. **Build**: `npm run build`
-3. **Typecheck**: `npm run typecheck`
-4. **Test**: `npm run test:acp`
-5. **Ask user to test** - wait for user approval before release
-6. Only proceed to release after user confirms it works
+1. **Implement feature/fix** — Write code
+2. **Lint**: `npm run lint` (auto-runs before build)
+3. **Typecheck**: `npm run typecheck` (auto-runs before build)
+4. **Build**: `npm run build`
+5. **Test**: `npm run test:acp`
+6. **Manual test** — Test in Obsidian, wait for user approval
+7. Only proceed to release after user confirms it works
+
+### Pull Request Process
+
+**IMPORTANT**: Before creating any PR to this repository, always ask the maintainer for review first!
 
 ### Release Process
 
 **IMPORTANT**: Always use `npm run version` script, never edit version manually!
 
 **IMPORTANT**: Tags must be WITHOUT 'v' prefix (Obsidian requirement)!
-- ✅ Correct: `1.0.0`
-- ❌ Wrong: `v1.0.0`
+- ✅ Correct: `1.0.12`
+- ❌ Wrong: `v1.0.12`
 
 ```bash
-# 1. Bump version (choose one):
-npm run version patch   # 1.0.9 -> 1.0.10 (bug fixes)
-npm run version minor   # 1.0.9 -> 1.1.0 (new features)
-npm run version major   # 1.0.9 -> 2.0.0 (breaking changes)
+# 1. Ensure clean lint and typecheck (version script does this automatically)
+npm run version patch   # 1.0.12 -> 1.0.13 (bug fixes)
+npm run version minor   # 1.0.12 -> 1.1.0 (new features)
+npm run version major   # 1.0.12 -> 2.0.0 (breaking changes)
 
-# 2. Build with new version:
-npm run build
-
-# 3. Commit changes:
+# 2. Commit changes:
 git add -A
-git commit -m "Release X.Y.Z: Short description"
+git commit -m "release: X.Y.Z - Short description
 
-# 4. Tag and push (NO 'v' prefix!):
+Maintainer: ekonev@smartandpoint.com"
+
+# 3. Tag and push (NO 'v' prefix!):
 git tag X.Y.Z
 git push origin main --tags
 ```
@@ -198,10 +222,43 @@ Maintainer: ekonev@smartandpoint.com
 - **minor** (0.X.0): New features, backwards compatible
 - **major** (X.0.0): Breaking changes
 
+## Code Quality
+
+### ESLint Setup
+The project uses `eslint-plugin-obsidianmd` with the same rules as Obsidian's Review Bot. This ensures code passes automated checks before PR submission.
+
+Key rules enforced:
+- No direct `style.*` assignments (use CSS classes or `setCssProps`)
+- Sentence case for UI text
+- Proper promise handling with `void` operator
+- No deprecated APIs
+
+### Pre-release Checks
+The `npm run version` script automatically runs:
+1. `npm run lint` — ESLint with obsidianmd rules
+2. `npm run typecheck` — TypeScript type checking
+
+Build will fail if either check fails.
+
+## Git Configuration
+
+Local git config for this repository:
+- **Name**: Evgenii Konev
+- **Email**: ekonev@smartandpoint.com
+
+This does not affect global git settings.
+
 ## Current Version: 1.0.12
 
+Features:
+- Full Claude Code agent integration
 - acp-core module with 209 tests
 - NativeAcpClient implementation
-- Plugin fully migrated to acp-core
-- ESLint with obsidianmd rules (same as Review Bot)
-- Repository moved to SmartAndPoint organization
+- Slash command autocomplete (`/`)
+- File reference autocomplete (`[[`)
+- ESLint with obsidianmd rules
+- Permission system with inline cards
+- Diff viewer for file changes
+- Code viewer with syntax highlighting
+
+Organization: SmartAndPoint
