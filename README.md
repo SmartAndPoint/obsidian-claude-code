@@ -180,8 +180,7 @@ npm run build
 
 ## Author
 
-Created and maintained by Evgeny Konev
-SmartAndPoint
+Created and maintained by Evgeny Konev (SmartAndPoint)
 
 ## License
 
