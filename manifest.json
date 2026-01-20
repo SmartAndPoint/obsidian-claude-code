@@ -4,7 +4,7 @@
   "version": "1.0.11",
   "minAppVersion": "1.5.0",
   "description": "Integrate Claude Code AI assistant into your vault with file operations, tool execution, and permission controls via ACP.",
-  "author": "Evgenii Konev",
-  "authorUrl": "https://github.com/evgeniikonev",
+  "author": "Evgeny Konev / SmartAndPoint",
+  "authorUrl": "https://github.com/SmartAndPoint",
   "isDesktopOnly": true
 }

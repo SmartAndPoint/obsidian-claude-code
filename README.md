@@ -6,7 +6,7 @@ This plugin integrates the full Claude Code agent experience into your vault: no
 
 > **Note:** This is a third-party integration, not an official Anthropic product.
 
-[![Install in Obsidian](https://img.shields.io/badge/Install%20in-Obsidian-7C3AED?style=for-the-badge&logo=obsidian)](https://github.com/evgeniikonev/obsidian-claude-code/releases/latest)
+[![Install in Obsidian](https://img.shields.io/badge/Install%20in-Obsidian-7C3AED?style=for-the-badge&logo=obsidian)](https://github.com/SmartAndPoint/obsidian-claude-code/releases/latest)
 
 ## Features
 
@@ -38,7 +38,7 @@ You need **one** of the following:
 
 ### From GitHub Releases (Recommended)
 
-1. Download the [latest release](https://github.com/evgeniikonev/obsidian-claude-code/releases/latest)
+1. Download the [latest release](https://github.com/SmartAndPoint/obsidian-claude-code/releases/latest)
 2. Extract the archive to: `YOUR_VAULT/.obsidian/plugins/obsidian-claude-code/`
 3. In Obsidian: Settings → Community Plugins → Enable "Claude Code Integration"
 
@@ -46,7 +46,7 @@ You need **one** of the following:
 
 ```bash
 # Clone the repository
-git clone https://github.com/evgeniikonev/obsidian-claude-code
+git clone https://github.com/SmartAndPoint/obsidian-claude-code
 cd obsidian-claude-code
 
 # Install dependencies and build
@@ -177,6 +177,11 @@ npm run typecheck
 # Production build
 npm run build
 ```
+
+## Author
+
+Created and maintained by Evgeny Konev
+SmartAndPoint
 
 ## License
 
