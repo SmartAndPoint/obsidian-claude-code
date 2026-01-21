@@ -130,13 +130,7 @@ export class CodeViewerModal extends Modal {
     if (!this.contentContainer) return;
     this.contentContainer.addClass("code-viewer-markdown");
 
-    void MarkdownRenderer.render(
-      this.app,
-      this.content,
-      this.contentContainer,
-      "",
-      this.component
-    );
+    void MarkdownRenderer.render(this.app, this.content, this.contentContainer, "", this.component);
   }
 
   private renderCode(language: string): void {
@@ -194,10 +188,7 @@ export class CodeViewerModal extends Modal {
 /**
  * Process rendered content to collapse long code blocks
  */
-export function collapseCodeBlocks(
-  container: HTMLElement,
-  app: App
-): void {
+export function collapseCodeBlocks(container: HTMLElement, app: App): void {
   // Find all pre > code blocks
   const codeBlocks = container.querySelectorAll("pre");
 

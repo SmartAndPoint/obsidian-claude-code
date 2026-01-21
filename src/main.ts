@@ -65,7 +65,7 @@ export default class ClaudeCodePlugin extends Plugin {
 
         // Fallback: auto-deny if no chat view
         return {
-          outcome: { outcome: "cancelled" }
+          outcome: { outcome: "cancelled" },
         };
       },
 
@@ -77,12 +77,12 @@ export default class ClaudeCodePlugin extends Plugin {
       },
       onConnected: () => {
         console.debug("[ACP] Connected");
-        new Notice("Connected to Claude Code");
+        new Notice("Connected");
         this.getChatView()?.updateStatus("connected");
       },
       onDisconnected: () => {
         console.debug("[ACP] Disconnected");
-        new Notice("Disconnected from Claude Code");
+        new Notice("Disconnected");
         this.getChatView()?.updateStatus("disconnected");
       },
 
@@ -149,7 +149,7 @@ export default class ClaudeCodePlugin extends Plugin {
     });
 
     // Add ribbon icon
-    this.addRibbonIcon("bot", "Claude Code", () => {
+    this.addRibbonIcon("bot", "Claude", () => {
       void this.activateChatView();
     });
   }
@@ -260,7 +260,12 @@ export default class ClaudeCodePlugin extends Plugin {
     return this.acpClient?.getAvailableModels() ?? [];
   }
 
-  getConfigOptions(): Array<{ id: string; name: string; currentValue?: string; category?: string }> {
+  getConfigOptions(): Array<{
+    id: string;
+    name: string;
+    currentValue?: string;
+    category?: string;
+  }> {
     return this.acpClient?.getConfigOptions() ?? [];
   }
 }

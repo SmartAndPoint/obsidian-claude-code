@@ -48,8 +48,21 @@ export function getCacheDir(pluginDir: string): string {
  */
 export function isCachedInstallationValid(cacheDir: string): boolean {
   // Check path structure for scoped npm package
-  const packageJsonPath = join(cacheDir, "node_modules", "@zed-industries", "claude-code-acp", "package.json");
-  const indexPath = join(cacheDir, "node_modules", "@zed-industries", "claude-code-acp", "dist", "index.js");
+  const packageJsonPath = join(
+    cacheDir,
+    "node_modules",
+    "@zed-industries",
+    "claude-code-acp",
+    "package.json"
+  );
+  const indexPath = join(
+    cacheDir,
+    "node_modules",
+    "@zed-industries",
+    "claude-code-acp",
+    "dist",
+    "index.js"
+  );
 
   if (existsSync(indexPath) && existsSync(packageJsonPath)) {
     try {
@@ -57,7 +70,9 @@ export function isCachedInstallationValid(cacheDir: string): boolean {
       if (pkg.version === ACP_VERSION) {
         return true;
       }
-      console.debug(`[BinaryManager] Cached version ${pkg.version} differs from required ${ACP_VERSION}`);
+      console.debug(
+        `[BinaryManager] Cached version ${pkg.version} differs from required ${ACP_VERSION}`
+      );
     } catch {
       // Invalid package.json
     }
@@ -70,7 +85,14 @@ export function isCachedInstallationValid(cacheDir: string): boolean {
  * Get the path to the cached binary
  */
 export function getCachedBinaryPath(cacheDir: string): string | null {
-  const indexPath = join(cacheDir, "node_modules", "@zed-industries", "claude-code-acp", "dist", "index.js");
+  const indexPath = join(
+    cacheDir,
+    "node_modules",
+    "@zed-industries",
+    "claude-code-acp",
+    "dist",
+    "index.js"
+  );
 
   if (existsSync(indexPath)) {
     return indexPath;
@@ -114,15 +136,19 @@ export async function installAcpPackage(
 
     // Run npm install
     return new Promise((resolve) => {
-      const npmProcess = spawn(npmPath, ["install", "--no-audit", "--no-fund", "--loglevel", "error"], {
-        cwd: cacheDir,
-        stdio: ["ignore", "pipe", "pipe"],
-        env: {
-          ...process.env,
-          PATH: `${process.env.PATH || ""}:/opt/homebrew/bin:/usr/local/bin:/usr/bin`,
-        },
-        shell: process.platform === "win32",
-      });
+      const npmProcess = spawn(
+        npmPath,
+        ["install", "--no-audit", "--no-fund", "--loglevel", "error"],
+        {
+          cwd: cacheDir,
+          stdio: ["ignore", "pipe", "pipe"],
+          env: {
+            ...process.env,
+            PATH: `${process.env.PATH || ""}:/opt/homebrew/bin:/usr/local/bin:/usr/bin`,
+          },
+          shell: process.platform === "win32",
+        }
+      );
 
       let stderr = "";
 
@@ -292,7 +318,13 @@ export function findClaudeCodeAcpBinary(pluginDir?: string): BinaryInfo {
  * Find binary in local node_modules
  */
 function findLocalBinary(pluginDir: string): string | null {
-  const acpPackagePath = join("node_modules", "@zed-industries", "claude-code-acp", "dist", "index.js");
+  const acpPackagePath = join(
+    "node_modules",
+    "@zed-industries",
+    "claude-code-acp",
+    "dist",
+    "index.js"
+  );
 
   const possiblePaths = [
     join(pluginDir, acpPackagePath),

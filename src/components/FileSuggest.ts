@@ -200,8 +200,8 @@ export class FileSuggest {
     }
 
     // Sort remaining items (after active file/folder): by match score, then folders, then alphabetically
-    const activeItems = items.filter(i => i.isActive);
-    const otherItems = items.filter(i => !i.isActive);
+    const activeItems = items.filter((i) => i.isActive);
+    const otherItems = items.filter((i) => !i.isActive);
 
     otherItems.sort((a, b) => {
       // By match score (higher is better)
@@ -307,14 +307,18 @@ export class FileSuggest {
     const containerRect = this.container.getBoundingClientRect();
 
     setCssProps(this.dropdown, {
-      "--dropdown-bottom": `${containerRect.bottom - inputRect.top + 4}px`
+      "--dropdown-bottom": `${containerRect.bottom - inputRect.top + 4}px`,
     });
   }
 
   /**
    * Append text with highlighted matches to parent element using DOM API
    */
-  private appendHighlightedText(parent: HTMLElement, text: string, matches: [number, number][]): void {
+  private appendHighlightedText(
+    parent: HTMLElement,
+    text: string,
+    matches: [number, number][]
+  ): void {
     let lastIndex = 0;
 
     for (const [start, end] of matches) {
@@ -405,10 +409,7 @@ export class FileSuggest {
 /**
  * Resolve [[file]] references to full vault paths
  */
-export function resolveFileReferences(
-  text: string,
-  app: App
-): string {
+export function resolveFileReferences(text: string, app: App): string {
   // Match [[filename]] patterns
   return text.replace(/\[\[([^[\]]+)\]\]/g, (match, filename) => {
     // Try to find the file in vault

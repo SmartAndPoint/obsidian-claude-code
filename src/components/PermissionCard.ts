@@ -5,10 +5,7 @@
  * instead of a blocking modal dialog.
  */
 
-import type {
-  PermissionRequestParams,
-  PermissionResponseParams,
-} from "../acpClient";
+import type { PermissionRequestParams, PermissionResponseParams } from "../acpClient";
 
 export class PermissionCard {
   private container: HTMLElement;
@@ -16,10 +13,7 @@ export class PermissionCard {
   private request: PermissionRequestParams;
   private isResolved: boolean = false;
 
-  constructor(
-    parent: HTMLElement,
-    request: PermissionRequestParams
-  ) {
+  constructor(parent: HTMLElement, request: PermissionRequestParams) {
     this.request = request;
     this.container = parent.createDiv({ cls: "permission-card" });
     this.render();
@@ -75,7 +69,7 @@ export class PermissionCard {
     if (rejectOptions.length > 0) {
       const rejectOpt = rejectOptions[0];
       const rejectBtn = buttons.createEl("button", {
-        cls: "permission-btn permission-btn-reject"
+        cls: "permission-btn permission-btn-reject",
       });
       rejectBtn.setText("Deny");
       rejectBtn.addEventListener("click", () => this.handleChoice(rejectOpt.optionId));
@@ -85,7 +79,7 @@ export class PermissionCard {
     const allowOnce = allowOptions.find((o) => o.kind === "allow_once");
     if (allowOnce) {
       const allowBtn = buttons.createEl("button", {
-        cls: "permission-btn permission-btn-allow"
+        cls: "permission-btn permission-btn-allow",
       });
       allowBtn.setText("Allow");
       allowBtn.addEventListener("click", () => this.handleChoice(allowOnce.optionId));
@@ -95,7 +89,7 @@ export class PermissionCard {
     const allowAlways = allowOptions.find((o) => o.kind === "allow_always");
     if (allowAlways) {
       const allowAlwaysBtn = buttons.createEl("button", {
-        cls: "permission-btn permission-btn-allow-always"
+        cls: "permission-btn permission-btn-allow-always",
       });
       allowAlwaysBtn.setText("Always allow");
       allowAlwaysBtn.addEventListener("click", () => this.handleChoice(allowAlways.optionId));

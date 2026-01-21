@@ -69,7 +69,11 @@ export class CommandSuggest {
    */
   setCommands(commands: AvailableCommand[]): void {
     this.commands = commands;
-    console.debug("[CommandSuggest] Commands updated:", commands.length, commands.map(c => c.name));
+    console.debug(
+      "[CommandSuggest] Commands updated:",
+      commands.length,
+      commands.map((c) => c.name)
+    );
   }
 
   /**
@@ -169,9 +173,7 @@ export class CommandSuggest {
     const addCommands = (commands: AvailableCommand[], isBuiltin: boolean) => {
       for (const command of commands) {
         // Get command name without leading /
-        const commandName = command.name.startsWith("/")
-          ? command.name.slice(1)
-          : command.name;
+        const commandName = command.name.startsWith("/") ? command.name.slice(1) : command.name;
 
         // Prefix match only on command name
         if (query && !commandName.toLowerCase().startsWith(queryLower)) {
@@ -294,7 +296,7 @@ export class CommandSuggest {
     const containerRect = this.container.getBoundingClientRect();
 
     setCssProps(this.dropdown, {
-      "--dropdown-bottom": `${containerRect.bottom - inputRect.top + 24}px`
+      "--dropdown-bottom": `${containerRect.bottom - inputRect.top + 24}px`,
     });
   }
 

@@ -210,10 +210,17 @@ async function test(name: string, fn: () => Promise<void>): Promise<void> {
     await fn();
     const duration = Date.now() - start;
     results.push({ name: `${currentSuite}: ${name}`, passed: true, duration });
-    console.log(`${colors.green}✓${colors.reset} ${name} ${colors.dim}(${duration}ms)${colors.reset}`);
+    console.log(
+      `${colors.green}✓${colors.reset} ${name} ${colors.dim}(${duration}ms)${colors.reset}`
+    );
   } catch (error) {
     const duration = Date.now() - start;
-    results.push({ name: `${currentSuite}: ${name}`, passed: false, error: error as Error, duration });
+    results.push({
+      name: `${currentSuite}: ${name}`,
+      passed: false,
+      error: error as Error,
+      duration,
+    });
     console.log(`${colors.red}✗${colors.reset} ${name}`);
     console.log(`  ${colors.red}${(error as Error).message}${colors.reset}`);
   }
@@ -221,7 +228,9 @@ async function test(name: string, fn: () => Promise<void>): Promise<void> {
 
 function skip(name: string, reason?: string): void {
   results.push({ name: `${currentSuite}: ${name}`, passed: true, skipped: true, duration: 0 });
-  console.log(`${colors.yellow}○${colors.reset} ${name} ${colors.dim}(skipped${reason ? `: ${reason}` : ""})${colors.reset}`);
+  console.log(
+    `${colors.yellow}○${colors.reset} ${name} ${colors.dim}(skipped${reason ? `: ${reason}` : ""})${colors.reset}`
+  );
 }
 
 function assert(condition: boolean, message: string): void {
@@ -264,13 +273,17 @@ async function assertThrowsAsync(fn: () => Promise<unknown>, message?: string): 
     threw = true;
   }
   if (!threw) {
-    throw new Error(`Assertion failed: Expected async function to throw${message ? `: ${message}` : ""}`);
+    throw new Error(
+      `Assertion failed: Expected async function to throw${message ? `: ${message}` : ""}`
+    );
   }
 }
 
 function assertArrayContains<T>(arr: T[], item: T, message?: string): void {
   if (!arr.includes(item)) {
-    throw new Error(`Assertion failed: ${message ?? `Array should contain ${JSON.stringify(item)}`}`);
+    throw new Error(
+      `Assertion failed: ${message ?? `Array should contain ${JSON.stringify(item)}`}`
+    );
   }
 }
 
@@ -285,9 +298,13 @@ function assertHasProperty(obj: unknown, prop: string, message?: string): void {
 // ============================================================================
 
 function setupTests(): void {
-  console.log(`\n${colors.cyan}═══════════════════════════════════════════════════════════════${colors.reset}`);
+  console.log(
+    `\n${colors.cyan}═══════════════════════════════════════════════════════════════${colors.reset}`
+  );
   console.log(`${colors.cyan}  ACP Client Tests (SDK 0.13.0) - Full Coverage${colors.reset}`);
-  console.log(`${colors.cyan}═══════════════════════════════════════════════════════════════${colors.reset}`);
+  console.log(
+    `${colors.cyan}═══════════════════════════════════════════════════════════════${colors.reset}`
+  );
   console.log(`${colors.dim}Implementation: Zed Adapter${colors.reset}`);
   console.log(`${colors.dim}Protocol Version: ${PROTOCOL_VERSION}${colors.reset}`);
   console.log(`${colors.dim}CWD: ${TEST_CWD}${colors.reset}`);
@@ -314,7 +331,10 @@ async function unitTests(): Promise<void> {
     assert(typeof client.disconnect === "function", "disconnect should be a function");
     assert(typeof client.isConnected === "function", "isConnected should be a function");
     assert(typeof client.getSession === "function", "getSession should be a function");
-    assert(typeof client.getAgentCapabilities === "function", "getAgentCapabilities should be a function");
+    assert(
+      typeof client.getAgentCapabilities === "function",
+      "getAgentCapabilities should be a function"
+    );
 
     // Messaging methods
     assert(typeof client.sendMessage === "function", "sendMessage should be a function");
@@ -322,15 +342,24 @@ async function unitTests(): Promise<void> {
     assert(typeof client.cancel === "function", "cancel should be a function");
 
     // Permission methods
-    assert(typeof client.setPermissionHandler === "function", "setPermissionHandler should be a function");
+    assert(
+      typeof client.setPermissionHandler === "function",
+      "setPermissionHandler should be a function"
+    );
 
     // Session mode methods
-    assert(typeof client.getAvailableModes === "function", "getAvailableModes should be a function");
+    assert(
+      typeof client.getAvailableModes === "function",
+      "getAvailableModes should be a function"
+    );
     assert(typeof client.getCurrentMode === "function", "getCurrentMode should be a function");
     assert(typeof client.setMode === "function", "setMode should be a function");
 
     // Session model methods
-    assert(typeof client.getAvailableModels === "function", "getAvailableModels should be a function");
+    assert(
+      typeof client.getAvailableModels === "function",
+      "getAvailableModels should be a function"
+    );
     assert(typeof client.getCurrentModel === "function", "getCurrentModel should be a function");
     assert(typeof client.setModel === "function", "setModel should be a function");
 
@@ -381,7 +410,10 @@ async function unitTests(): Promise<void> {
       await generator.next();
     } catch (error) {
       errorThrown = true;
-      assert((error as Error).message.includes("Not connected"), "should throw 'Not connected' error");
+      assert(
+        (error as Error).message.includes("Not connected"),
+        "should throw 'Not connected' error"
+      );
     }
 
     assert(errorThrown, "should throw an error");
@@ -452,10 +484,18 @@ async function unitTests(): Promise<void> {
     let eventCount = 0;
 
     const client = createAcpClient({
-      onConnect: () => { connectCalled = true; },
-      onDisconnect: () => { disconnectCalled = true; },
-      onError: () => { errorCalled = true; },
-      onEvent: () => { eventCount++; },
+      onConnect: () => {
+        connectCalled = true;
+      },
+      onDisconnect: () => {
+        disconnectCalled = true;
+      },
+      onError: () => {
+        errorCalled = true;
+      },
+      onEvent: () => {
+        eventCount++;
+      },
     });
 
     // These are just stored, not called yet
@@ -513,9 +553,7 @@ async function typeComplianceTests(): Promise<void> {
   await test("SessionConfig type structure", async () => {
     const config: SessionConfig = {
       cwd: "/test/path",
-      mcpServers: [
-        { name: "test", command: "node", args: ["server.js"] },
-      ],
+      mcpServers: [{ name: "test", command: "node", args: ["server.js"] }],
     };
 
     assertHasProperty(config, "cwd");
@@ -541,7 +579,7 @@ async function typeComplianceTests(): Promise<void> {
     assertEqual(events.length, 12, "should have 12 stream event types");
 
     // Verify each event type
-    const types = events.map(e => e.type);
+    const types = events.map((e) => e.type);
     assertArrayContains(types, "message_start", "missing message_start");
     assertArrayContains(types, "text_delta", "missing text_delta");
     assertArrayContains(types, "thinking_delta", "missing thinking_delta");
@@ -587,12 +625,7 @@ async function typeComplianceTests(): Promise<void> {
   });
 
   await test("ToolCallStatus values match ACP SDK 0.13.0 (4 values)", async () => {
-    const validStatuses: ToolCallStatus[] = [
-      "pending",
-      "in_progress",
-      "completed",
-      "failed",
-    ];
+    const validStatuses: ToolCallStatus[] = ["pending", "in_progress", "completed", "failed"];
 
     assertEqual(validStatuses.length, 4, "should have 4 tool call statuses");
   });
@@ -609,44 +642,25 @@ async function typeComplianceTests(): Promise<void> {
   });
 
   await test("PlanEntryStatus values (3 values)", async () => {
-    const validStatuses: PlanEntryStatus[] = [
-      "pending",
-      "in_progress",
-      "completed",
-    ];
+    const validStatuses: PlanEntryStatus[] = ["pending", "in_progress", "completed"];
 
     assertEqual(validStatuses.length, 3, "should have 3 plan entry statuses");
   });
 
   await test("PlanEntryPriority values (3 values)", async () => {
-    const validPriorities: PlanEntryPriority[] = [
-      "high",
-      "medium",
-      "low",
-    ];
+    const validPriorities: PlanEntryPriority[] = ["high", "medium", "low"];
 
     assertEqual(validPriorities.length, 3, "should have 3 priority levels");
   });
 
   await test("SessionConfigCategory values (4 values)", async () => {
-    const validCategories: SessionConfigCategory[] = [
-      "mode",
-      "model",
-      "thought_level",
-      "other",
-    ];
+    const validCategories: SessionConfigCategory[] = ["mode", "model", "thought_level", "other"];
 
     assertEqual(validCategories.length, 4, "should have 4 config categories");
   });
 
   await test("ContentType values for prompt capabilities (5 values)", async () => {
-    const validTypes: ContentType[] = [
-      "text",
-      "image",
-      "audio",
-      "resource_link",
-      "resource",
-    ];
+    const validTypes: ContentType[] = ["text", "image", "audio", "resource_link", "resource"];
 
     assertEqual(validTypes.length, 5, "should have 5 content types");
   });
@@ -1042,12 +1056,7 @@ async function toolCallTests(): Promise<void> {
       oldLines: 5,
       newStart: 10,
       newLines: 7,
-      lines: [
-        " const x = 1;",
-        "-const y = 2;",
-        "+const y = 3;",
-        "+const z = 4;",
-      ],
+      lines: [" const x = 1;", "-const y = 2;", "+const y = 3;", "+const z = 4;"],
     };
 
     const diff: ToolCallDiff = {
@@ -1135,9 +1144,7 @@ async function permissionTests(): Promise<void> {
         status: "pending",
         locations: [{ path: "/config.ts", line: 10 }],
       },
-      options: [
-        { optionId: "allow", name: "Allow", kind: "allow_once" },
-      ],
+      options: [{ optionId: "allow", name: "Allow", kind: "allow_once" }],
     };
 
     assertHasProperty(params, "sessionId");
@@ -1222,7 +1229,7 @@ async function permissionTests(): Promise<void> {
     ];
 
     assertEqual(options.length, 4);
-    const kinds = options.map(o => o.kind);
+    const kinds = options.map((o) => o.kind);
     assertArrayContains(kinds, "allow_once");
     assertArrayContains(kinds, "allow_always");
     assertArrayContains(kinds, "reject_once");
@@ -1344,9 +1351,7 @@ async function modeModelTests(): Promise<void> {
 
   await test("SetSessionConfigResult structure", async () => {
     const result: SetSessionConfigResult = {
-      configOptions: [
-        { id: "thought_level", name: "Thinking Level", currentValue: "extended" },
-      ],
+      configOptions: [{ id: "thought_level", name: "Thinking Level", currentValue: "extended" }],
     };
 
     assertHasProperty(result, "configOptions");
@@ -1534,9 +1539,7 @@ async function protocolMessageTests(): Promise<void> {
         name: "Claude Code",
         version: "1.0.0",
       },
-      authMethods: [
-        { id: "api_key", name: "API Key" },
-      ],
+      authMethods: [{ id: "api_key", name: "API Key" }],
     };
 
     assertHasProperty(result, "protocolVersion");
@@ -1576,9 +1579,7 @@ async function protocolMessageTests(): Promise<void> {
   await test("NewSessionParams structure", async () => {
     const params: NewSessionParams = {
       cwd: "/project/path",
-      mcpServers: [
-        { name: "fs", command: "node", args: ["server.js"] },
-      ],
+      mcpServers: [{ name: "fs", command: "node", args: ["server.js"] }],
     };
 
     assertHasProperty(params, "cwd");
@@ -1588,9 +1589,7 @@ async function protocolMessageTests(): Promise<void> {
   await test("PromptParams structure", async () => {
     const params: PromptParams = {
       sessionId: "sess-123",
-      prompt: [
-        { type: "text", text: "Help me with this code" },
-      ],
+      prompt: [{ type: "text", text: "Help me with this code" }],
       command: "/review",
     };
 
@@ -1771,9 +1770,7 @@ async function sessionManagementTypeTests(): Promise<void> {
   await test("LoadSessionParams structure", async () => {
     const params: LoadSessionParams = {
       sessionId: "sess-123",
-      mcpServers: [
-        { name: "fs", command: "node", args: ["fs-server.js"] },
-      ],
+      mcpServers: [{ name: "fs", command: "node", args: ["fs-server.js"] }],
     };
 
     assertHasProperty(params, "sessionId");
@@ -2214,9 +2211,7 @@ async function resultTypeTests(): Promise<void> {
         { id: "opus", name: "Claude Opus 4.5" },
       ],
       currentModel: { modelId: "sonnet" },
-      configOptions: [
-        { id: "thought_level", name: "Thought Level", currentValue: "normal" },
-      ],
+      configOptions: [{ id: "thought_level", name: "Thought Level", currentValue: "normal" }],
       sessionInfo: { title: "New Session" },
     };
 
@@ -2752,9 +2747,15 @@ async function acpClientConfigTests(): Promise<void> {
     let errorReceived: Error | null = null;
 
     const config: AcpClientConfig = {
-      onConnect: () => { connected = true; },
-      onDisconnect: () => { disconnected = true; },
-      onError: (error) => { errorReceived = error; },
+      onConnect: () => {
+        connected = true;
+      },
+      onDisconnect: () => {
+        disconnected = true;
+      },
+      onError: (error) => {
+        errorReceived = error;
+      },
     };
 
     assertHasProperty(config, "onConnect");
@@ -3091,7 +3092,7 @@ async function sessionManagementIntegrationTests(): Promise<void> {
 
       const modes = client.getAvailableModes();
       if (modes.length > 1) {
-        const targetMode = modes.find(m => m.id !== client.getCurrentMode()?.modeId);
+        const targetMode = modes.find((m) => m.id !== client.getCurrentMode()?.modeId);
         if (targetMode) {
           await client.setMode(targetMode.id);
           console.log(`  Switched to mode: ${targetMode.id}`);
@@ -3174,9 +3175,13 @@ async function runAllTests(): Promise<void> {
   await terminalIntegrationTests();
 
   // Summary
-  console.log(`\n${colors.cyan}═══════════════════════════════════════════════════════════════${colors.reset}`);
+  console.log(
+    `\n${colors.cyan}═══════════════════════════════════════════════════════════════${colors.reset}`
+  );
   console.log(`${colors.cyan}  Summary${colors.reset}`);
-  console.log(`${colors.cyan}═══════════════════════════════════════════════════════════════${colors.reset}\n`);
+  console.log(
+    `${colors.cyan}═══════════════════════════════════════════════════════════════${colors.reset}\n`
+  );
 
   const passed = results.filter((r) => r.passed && !r.skipped).length;
   const failed = results.filter((r) => !r.passed).length;
@@ -3187,12 +3192,14 @@ async function runAllTests(): Promise<void> {
   if (failed > 0) {
     console.log(`${colors.red}Failed: ${failed}${colors.reset}`);
     console.log(`\n${colors.red}Failed tests:${colors.reset}`);
-    results.filter((r) => !r.passed).forEach((r) => {
-      console.log(`  ${colors.red}✗${colors.reset} ${r.name}`);
-      if (r.error) {
-        console.log(`    ${colors.dim}${r.error.message}${colors.reset}`);
-      }
-    });
+    results
+      .filter((r) => !r.passed)
+      .forEach((r) => {
+        console.log(`  ${colors.red}✗${colors.reset} ${r.name}`);
+        if (r.error) {
+          console.log(`    ${colors.dim}${r.error.message}${colors.reset}`);
+        }
+      });
   }
   if (skipped > 0) {
     console.log(`${colors.yellow}Skipped: ${skipped}${colors.reset}`);
@@ -3202,8 +3209,12 @@ async function runAllTests(): Promise<void> {
   // Coverage Summary
   console.log(`\n${colors.magenta}Coverage Summary:${colors.reset}`);
   console.log(`  ${colors.dim}Type Categories: 27${colors.reset}`);
-  console.log(`  ${colors.dim}SDK Types Covered: 100% of public API (97 types + 6 client types)${colors.reset}`);
-  console.log(`  ${colors.dim}Integration Scenarios: ${HAS_API_KEY ? "Full" : "Skipped"}${colors.reset}`);
+  console.log(
+    `  ${colors.dim}SDK Types Covered: 100% of public API (97 types + 6 client types)${colors.reset}`
+  );
+  console.log(
+    `  ${colors.dim}Integration Scenarios: ${HAS_API_KEY ? "Full" : "Skipped"}${colors.reset}`
+  );
 
   // Exit with error code if any tests failed
   if (failed > 0) {

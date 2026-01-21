@@ -574,21 +574,14 @@ export type ToolKind =
   | "switch_mode"
   | "other";
 
-export type ToolCallStatus =
-  | "pending"
-  | "in_progress"
-  | "completed"
-  | "failed";
+export type ToolCallStatus = "pending" | "in_progress" | "completed" | "failed";
 
 export interface ToolCallLocation {
   path: string;
   line?: number;
 }
 
-export type ToolCallContent =
-  | ToolCallContentBlock
-  | ToolCallDiff
-  | ToolCallTerminal;
+export type ToolCallContent = ToolCallContentBlock | ToolCallDiff | ToolCallTerminal;
 
 export interface ToolCallContentBlock {
   type: "content";
@@ -675,11 +668,7 @@ export interface PermissionOption {
   kind: PermissionOptionKind;
 }
 
-export type PermissionOptionKind =
-  | "allow_once"
-  | "allow_always"
-  | "reject_once"
-  | "reject_always";
+export type PermissionOptionKind = "allow_once" | "allow_always" | "reject_once" | "reject_always";
 
 export interface PermissionResponse {
   outcome: PermissionOutcome;
@@ -705,9 +694,7 @@ export type PermissionHandlerResponse =
   | { granted: true; optionId?: string }
   | { granted: false; reason?: string };
 
-export type PermissionHandler = (
-  request: PermissionRequest
-) => Promise<PermissionHandlerResponse>;
+export type PermissionHandler = (request: PermissionRequest) => Promise<PermissionHandlerResponse>;
 
 // ============================================================================
 // File System Types

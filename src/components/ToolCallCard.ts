@@ -4,17 +4,8 @@
  * Shows tool name, parameters, status, and optional content (diff, terminal output).
  */
 
-import type {
-  ToolCallStatus,
-  ToolCallContent,
-  Diff,
-  Terminal,
-  Content,
-} from "../acp-core";
-import type {
-  ToolCallData,
-  ToolCallUpdateData,
-} from "../acpClient";
+import type { ToolCallStatus, ToolCallContent, Diff, Terminal, Content } from "../acp-core";
+import type { ToolCallData, ToolCallUpdateData } from "../acpClient";
 import { App } from "obsidian";
 import { CodeViewerModal } from "./CodeViewer";
 import { createClickablePath } from "./PathFormatter";
@@ -99,7 +90,12 @@ export class ToolCallCard {
 
   updateStatus(status: ToolCallStatus): void {
     this.statusEl.empty();
-    this.statusEl.removeClass("status-pending", "status-in_progress", "status-completed", "status-failed");
+    this.statusEl.removeClass(
+      "status-pending",
+      "status-in_progress",
+      "status-completed",
+      "status-failed"
+    );
     this.statusEl.addClass(`status-${status}`);
 
     const icon = this.statusEl.createSpan({ cls: "status-icon" });

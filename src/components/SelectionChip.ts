@@ -214,9 +214,10 @@ export class SelectionChipsContainer {
     if (selection.isFullFile) {
       info.textContent = selection.file.name;
     } else {
-      const lineInfo = selection.startLine === selection.endLine
-        ? `(${selection.startLine})`
-        : `(${selection.startLine}-${selection.endLine})`;
+      const lineInfo =
+        selection.startLine === selection.endLine
+          ? `(${selection.startLine})`
+          : `(${selection.startLine}-${selection.endLine})`;
       info.textContent = `${selection.file.name} ${lineInfo}`;
     }
 
@@ -238,8 +239,9 @@ export class SelectionChipsContainer {
 
   private updateVisibility(): void {
     // Check if any chips are actually visible (not having is-hidden class)
-    const hasVisibleChips = Array.from(this.container.querySelectorAll('.selection-chip'))
-      .some(chip => !chip.hasClass("is-hidden"));
+    const hasVisibleChips = Array.from(this.container.querySelectorAll(".selection-chip")).some(
+      (chip) => !chip.hasClass("is-hidden")
+    );
 
     this.container.toggleClass("is-hidden", !hasVisibleChips);
   }

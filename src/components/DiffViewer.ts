@@ -24,7 +24,7 @@ interface DiffLine {
 interface ChangeBlock {
   id: number;
   startIdx: number; // Index in diffLines where this block starts
-  endIdx: number;   // Index in diffLines where this block ends (exclusive)
+  endIdx: number; // Index in diffLines where this block ends (exclusive)
   accepted: boolean | null; // null = not decided, true = accepted, false = rejected
 }
 
@@ -40,7 +40,9 @@ function computeLCS(oldLines: string[], newLines: string[]): [number, number][] 
     return computeLCSSimple(oldLines, newLines);
   }
 
-  const dp: number[][] = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+  const dp: number[][] = Array(m + 1)
+    .fill(null)
+    .map(() => Array(n + 1).fill(0));
 
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
@@ -53,7 +55,8 @@ function computeLCS(oldLines: string[], newLines: string[]): [number, number][] 
   }
 
   const result: [number, number][] = [];
-  let i = m, j = n;
+  let i = m,
+    j = n;
   while (i > 0 && j > 0) {
     if (oldLines[i - 1] === newLines[j - 1]) {
       result.unshift([i - 1, j - 1]);
@@ -219,10 +222,7 @@ function findChangeBlocks(diffLines: DiffLine[]): ChangeBlock[] {
 /**
  * Reconstruct final text based on accepted/rejected blocks
  */
-function reconstructText(
-  diffLines: DiffLine[],
-  blocks: ChangeBlock[]
-): string {
+function reconstructText(diffLines: DiffLine[], blocks: ChangeBlock[]): string {
   const lineToBlock = new Map<number, ChangeBlock>();
   for (const block of blocks) {
     for (let i = block.startIdx; i < block.endIdx; i++) {
@@ -261,7 +261,7 @@ function getRelativePath(app: App, absolutePath: string): string {
 
   if (vaultPath && absolutePath.startsWith(vaultPath)) {
     relativePath = absolutePath.slice(vaultPath.length);
-    if (relativePath.startsWith('/')) {
+    if (relativePath.startsWith("/")) {
       relativePath = relativePath.slice(1);
     }
   }
@@ -340,9 +340,10 @@ export class DiffModal extends Modal {
         if (oldTextIndex !== -1) {
           // We found the oldText in the file - create full file diff
           this.fullOldText = fileContent;
-          this.fullNewText = fileContent.slice(0, oldTextIndex) +
-                            diffNewText +
-                            fileContent.slice(oldTextIndex + diffOldText.length);
+          this.fullNewText =
+            fileContent.slice(0, oldTextIndex) +
+            diffNewText +
+            fileContent.slice(oldTextIndex + diffOldText.length);
         } else {
           // oldText not found - maybe it's already applied or file changed
           // Fall back to showing just the diff
@@ -383,8 +384,8 @@ export class DiffModal extends Modal {
     }
 
     // Stats
-    const additions = this.diffLines.filter(l => l.type === "add").length;
-    const deletions = this.diffLines.filter(l => l.type === "remove").length;
+    const additions = this.diffLines.filter((l) => l.type === "add").length;
+    const deletions = this.diffLines.filter((l) => l.type === "remove").length;
 
     const stats = header.createDiv({ cls: "diff-modal-stats" });
     if (additions > 0) {
@@ -402,7 +403,7 @@ export class DiffModal extends Modal {
     const acceptAllBtn = actions.createEl("button", { cls: "diff-modal-btn diff-btn-accept" });
     acceptAllBtn.setText("Accept all");
     acceptAllBtn.addEventListener("click", () => {
-      this.blocks.forEach(b => {
+      this.blocks.forEach((b) => {
         b.accepted = true;
         this.updateBlockState(b);
       });
@@ -412,7 +413,7 @@ export class DiffModal extends Modal {
     const rejectAllBtn = actions.createEl("button", { cls: "diff-modal-btn diff-btn-reject" });
     rejectAllBtn.setText("Reject all");
     rejectAllBtn.addEventListener("click", () => {
-      this.blocks.forEach(b => {
+      this.blocks.forEach((b) => {
         b.accepted = false;
         this.updateBlockState(b);
       });
@@ -434,7 +435,9 @@ export class DiffModal extends Modal {
 
     // Changes count info
     const changesInfo = header.createDiv({ cls: "diff-modal-hunks-info" });
-    changesInfo.setText(`${this.blocks.length} change${this.blocks.length !== 1 ? "s" : ""} · ${this.diffLines.filter(l => l.type === "context").length} lines`);
+    changesInfo.setText(
+      `${this.blocks.length} change${this.blocks.length !== 1 ? "s" : ""} · ${this.diffLines.filter((l) => l.type === "context").length} lines`
+    );
 
     // Content - render full file with inline changes
     this.contentContainer = contentEl.createDiv({ cls: "diff-modal-content" });
@@ -449,7 +452,9 @@ export class DiffModal extends Modal {
     if (this.blocks.length > 1) {
       const footer = contentEl.createDiv({ cls: "diff-modal-footer" });
 
-      const applySelectedBtn = footer.createEl("button", { cls: "diff-modal-btn diff-btn-apply-selected" });
+      const applySelectedBtn = footer.createEl("button", {
+        cls: "diff-modal-btn diff-btn-apply-selected",
+      });
       applySelectedBtn.setText("Apply selected changes");
       applySelectedBtn.addEventListener("click", () => {
         this.applyChanges();
@@ -485,7 +490,7 @@ export class DiffModal extends Modal {
       // Render the line
       const tr = tbody.createEl("tr", {
         cls: `diff-row diff-row-${line.type}`,
-        attr: block ? { "data-block-id": String(block.id) } : {}
+        attr: block ? { "data-block-id": String(block.id) } : {},
       });
 
       // Line number columns
@@ -519,12 +524,12 @@ export class DiffModal extends Modal {
   private renderBlockHeader(tbody: HTMLElement, block: ChangeBlock): void {
     const headerRow = tbody.createEl("tr", {
       cls: "diff-block-header-row",
-      attr: { "data-block-id": String(block.id) }
+      attr: { "data-block-id": String(block.id) },
     });
 
     const td = headerRow.createEl("td", {
       cls: "diff-block-header",
-      attr: { colspan: "4" }
+      attr: { colspan: "4" },
     });
 
     const actions = td.createDiv({ cls: "diff-block-actions" });
@@ -551,7 +556,7 @@ export class DiffModal extends Modal {
   private updateBlockState(block: ChangeBlock): void {
     const rows = this.contentEl.querySelectorAll(`[data-block-id="${block.id}"]`);
 
-    rows.forEach(row => {
+    rows.forEach((row) => {
       row.removeClass("block-accepted", "block-rejected", "block-pending");
 
       if (block.accepted === true) {

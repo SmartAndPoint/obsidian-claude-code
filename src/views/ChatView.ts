@@ -1,9 +1,6 @@
 import { ItemView, WorkspaceLeaf, MarkdownRenderer, setIcon, MarkdownView } from "obsidian";
 import type ClaudeCodePlugin from "../main";
-import type {
-  ContentBlock,
-  Diff,
-} from "../acp-core";
+import type { ContentBlock, Diff } from "../acp-core";
 import type {
   ToolCallData,
   ToolCallUpdateData,
@@ -12,7 +9,18 @@ import type {
   PermissionResponseParams,
 } from "../acpClient";
 import { TFile } from "obsidian";
-import { ThinkingBlock, ToolCallCard, PermissionCard, collapseCodeBlocks, FileSuggest, CommandSuggest, resolveFileReferences, SelectionChipsContainer, formatAgentPaths, DiffModal } from "../components";
+import {
+  ThinkingBlock,
+  ToolCallCard,
+  PermissionCard,
+  collapseCodeBlocks,
+  FileSuggest,
+  CommandSuggest,
+  resolveFileReferences,
+  SelectionChipsContainer,
+  formatAgentPaths,
+  DiffModal,
+} from "../components";
 
 /**
  * Set CSS custom properties on an element
@@ -51,17 +59,23 @@ export class ChatView extends ItemView {
   private toolCallCards: Map<string, ToolCallCard> = new Map();
 
   // Pending Edit tool calls by file path (for batching)
-  private pendingEditsByFile: Map<string, Array<{
-    toolCallId: string;
-    toolCall: ToolCallData & { sessionUpdate: "tool_call" };
-    card: ToolCallCard;
-  }>> = new Map();
+  private pendingEditsByFile: Map<
+    string,
+    Array<{
+      toolCallId: string;
+      toolCall: ToolCallData & { sessionUpdate: "tool_call" };
+      card: ToolCallCard;
+    }>
+  > = new Map();
 
   // Pending permission requests by file (for batching)
-  private pendingPermissionsByFile: Map<string, Array<{
-    request: PermissionRequestParams;
-    resolve: (response: PermissionResponseParams) => void;
-  }>> = new Map();
+  private pendingPermissionsByFile: Map<
+    string,
+    Array<{
+      request: PermissionRequestParams;
+      resolve: (response: PermissionResponseParams) => void;
+    }>
+  > = new Map();
 
   // Auto-approved files: once user approves one edit, auto-approve rest for same file
   private autoApprovedFiles: Map<string, PermissionResponseParams> = new Map();
@@ -95,7 +109,7 @@ export class ChatView extends ItemView {
   }
 
   getDisplayText(): string {
-    return "Claude Code";
+    return "Claude";
   }
 
   getIcon(): string {
@@ -111,7 +125,7 @@ export class ChatView extends ItemView {
     // Header with status
     const header = container.createDiv({ cls: "chat-header" });
     const title = header.createDiv({ cls: "chat-title" });
-    title.setText("Claude Code");
+    title.setText("Claude");
 
     this.statusIndicator = header.createDiv({ cls: "chat-status" });
     this.updateStatus("disconnected");
@@ -134,13 +148,10 @@ export class ChatView extends ItemView {
     this.inputContainer = container.createDiv({ cls: "chat-input-container" });
 
     // Selection chips container (for Cmd+L selections)
-    this.selectionChips = new SelectionChipsContainer(
-      this.inputContainer,
-      (id) => {
-        // When chip is removed, remove `@N` from textarea
-        this.removeSelectionMarker(id);
-      }
-    );
+    this.selectionChips = new SelectionChipsContainer(this.inputContainer, (id) => {
+      // When chip is removed, remove `@N` from textarea
+      this.removeSelectionMarker(id);
+    });
 
     // Input row (textarea + send button)
     const inputRow = this.inputContainer.createDiv({ cls: "chat-input-row" });
@@ -164,7 +175,9 @@ export class ChatView extends ItemView {
     // Auto-resize textarea and sync chips
     this.textarea.addEventListener("input", () => {
       setCssProps(this.textarea, { "--chat-input-height": "auto" });
-      setCssProps(this.textarea, { "--chat-input-height": Math.min(this.textarea.scrollHeight, 200) + "px" });
+      setCssProps(this.textarea, {
+        "--chat-input-height": Math.min(this.textarea.scrollHeight, 200) + "px",
+      });
 
       // Sync chips with text - remove orphaned chips
       this.syncChipsWithText();
@@ -175,15 +188,10 @@ export class ChatView extends ItemView {
     this.sendButton.addEventListener("click", () => void this.handleSend());
 
     // File suggestion for [[ syntax
-    this.fileSuggest = new FileSuggest(
-      this.app,
-      this.inputContainer,
-      this.textarea,
-      (path) => {
-        // Optional: could show a notification or log
-        console.debug(`[FileSuggest] Selected: ${path}`);
-      }
-    );
+    this.fileSuggest = new FileSuggest(this.app, this.inputContainer, this.textarea, (path) => {
+      // Optional: could show a notification or log
+      console.debug(`[FileSuggest] Selected: ${path}`);
+    });
 
     // Command suggestion for / syntax (slash commands)
     this.commandSuggest = new CommandSuggest(
@@ -407,7 +415,12 @@ export class ChatView extends ItemView {
     this.toolCallCards.set(toolCallId, card);
 
     // Track Edit tool calls by file path for batching
-    console.debug(`[ChatView] onToolCall kind: ${toolCall.kind}, locations:`, toolCall.locations, `content:`, toolCall.content);
+    console.debug(
+      `[ChatView] onToolCall kind: ${toolCall.kind}, locations:`,
+      toolCall.locations,
+      `content:`,
+      toolCall.content
+    );
     if (toolCall.kind === "edit" && toolCall.locations && toolCall.locations.length > 0) {
       const filePath = toolCall.locations[0].path;
       if (filePath) {
@@ -419,7 +432,9 @@ export class ChatView extends ItemView {
           toolCall,
           card,
         });
-        console.debug(`[ChatView] Tracking Edit for ${filePath}, total: ${this.pendingEditsByFile.get(filePath)!.length}`);
+        console.debug(
+          `[ChatView] Tracking Edit for ${filePath}, total: ${this.pendingEditsByFile.get(filePath)!.length}`
+        );
       }
     }
 
@@ -431,7 +446,11 @@ export class ChatView extends ItemView {
    */
   onToolCallUpdate(update: ToolCallUpdateData & { sessionUpdate: "tool_call_update" }): void {
     const toolCallId = update.toolCallId ?? "";
-    console.debug(`[ChatView] onToolCallUpdate:`, { toolCallId, status: update.status, content: update.content });
+    console.debug(`[ChatView] onToolCallUpdate:`, {
+      toolCallId,
+      status: update.status,
+      content: update.content,
+    });
     const card = this.toolCallCards.get(toolCallId);
 
     if (card) {
@@ -453,10 +472,12 @@ export class ChatView extends ItemView {
    */
   private removeFromPendingEdits(toolCallId: string): void {
     for (const [filePath, edits] of this.pendingEditsByFile.entries()) {
-      const idx = edits.findIndex(e => e.toolCallId === toolCallId);
+      const idx = edits.findIndex((e) => e.toolCallId === toolCallId);
       if (idx !== -1) {
         edits.splice(idx, 1);
-        console.debug(`[ChatView] Removed Edit ${toolCallId} from ${filePath}, remaining: ${edits.length}`);
+        console.debug(
+          `[ChatView] Removed Edit ${toolCallId} from ${filePath}, remaining: ${edits.length}`
+        );
         if (edits.length === 0) {
           this.pendingEditsByFile.delete(filePath);
         }
@@ -487,8 +508,8 @@ export class ChatView extends ItemView {
       const entryEl = entries.createDiv({ cls: `plan-entry plan-entry-${entry.status}` });
 
       // Status icon based on PlanEntryStatus: "pending" | "in_progress" | "completed"
-      const statusIcon = entry.status === "completed" ? "✅" :
-                        entry.status === "in_progress" ? "🔄" : "⏳";
+      const statusIcon =
+        entry.status === "completed" ? "✅" : entry.status === "in_progress" ? "🔄" : "⏳";
 
       const iconEl = entryEl.createSpan({ cls: "plan-entry-icon" });
       iconEl.setText(statusIcon);
@@ -580,9 +601,10 @@ export class ChatView extends ItemView {
     }
 
     // Check if user approved (selected an "allow" option)
-    const selectedOptionId = response.outcome?.outcome === "selected" ? response.outcome.optionId : null;
+    const selectedOptionId =
+      response.outcome?.outcome === "selected" ? response.outcome.optionId : null;
     const selectedOption = selectedOptionId
-      ? modifiedRequest.options.find(o => o.optionId === selectedOptionId)
+      ? modifiedRequest.options.find((o) => o.optionId === selectedOptionId)
       : null;
     const isApproved = selectedOption?.kind?.includes("allow") ?? false;
 
@@ -598,7 +620,9 @@ export class ChatView extends ItemView {
   /**
    * Handle single permission request (non-edit or single edit)
    */
-  private async handleSinglePermission(request: PermissionRequestParams): Promise<PermissionResponseParams> {
+  private async handleSinglePermission(
+    request: PermissionRequestParams
+  ): Promise<PermissionResponseParams> {
     const card = new PermissionCard(this.messagesContainer, request);
     this.activePermissionCards.push(card);
     this.scrollToBottom();
@@ -681,13 +705,7 @@ export class ChatView extends ItemView {
     // BMO pattern: Re-render entire accumulated message through temp container
     const tempContainer = document.createElement("div");
 
-    void MarkdownRenderer.render(
-      this.app,
-      formattedMessage,
-      tempContainer,
-      "",
-      this
-    );
+    void MarkdownRenderer.render(this.app, formattedMessage, tempContainer, "", this);
 
     // Clear and transfer content
     contentEl.empty();
@@ -731,18 +749,11 @@ export class ChatView extends ItemView {
     const contentEl = messageEl.createDiv({ cls: "message-content" });
 
     // Format content - convert agent paths for assistant messages
-    const displayContent = message.role === "assistant"
-      ? formatAgentPaths(this.app, message.content)
-      : message.content;
+    const displayContent =
+      message.role === "assistant" ? formatAgentPaths(this.app, message.content) : message.content;
 
     // Render content with markdown
-    void MarkdownRenderer.render(
-      this.app,
-      displayContent,
-      contentEl,
-      "",
-      this
-    );
+    void MarkdownRenderer.render(this.app, displayContent, contentEl, "", this);
 
     // Make [[file]] links clickable
     this.makeLinksClickable(contentEl);
@@ -850,18 +861,21 @@ export class ChatView extends ItemView {
           let relativePath = diff.path;
           if (vaultPath && diff.path.startsWith(vaultPath)) {
             relativePath = diff.path.slice(vaultPath.length);
-            if (relativePath.startsWith('/')) {
+            if (relativePath.startsWith("/")) {
               relativePath = relativePath.slice(1);
             }
           }
 
           const file = this.app.vault.getAbstractFileByPath(relativePath);
           if (file instanceof TFile) {
-            void this.app.vault.modify(file, newText).then(() => {
-              console.debug(`[ChatView] Applied diff to ${relativePath}`);
-            }).catch((err) => {
-              console.error("[ChatView] Failed to apply diff:", err);
-            });
+            void this.app.vault
+              .modify(file, newText)
+              .then(() => {
+                console.debug(`[ChatView] Applied diff to ${relativePath}`);
+              })
+              .catch((err) => {
+                console.error("[ChatView] Failed to apply diff:", err);
+              });
           } else {
             console.error(`[ChatView] File not found: ${relativePath}`);
           }
@@ -869,14 +883,22 @@ export class ChatView extends ItemView {
       },
       onReject: () => {
         console.debug("[ChatView] Diff rejected");
-      }
+      },
     });
     modal.open();
   }
 
-  updateStatus(status: "disconnected" | "connecting" | "connected" | "thinking", message?: string): void {
+  updateStatus(
+    status: "disconnected" | "connecting" | "connected" | "thinking",
+    message?: string
+  ): void {
     this.statusIndicator.empty();
-    this.statusIndicator.removeClass("status-disconnected", "status-connecting", "status-connected", "status-thinking");
+    this.statusIndicator.removeClass(
+      "status-disconnected",
+      "status-connecting",
+      "status-connected",
+      "status-thinking"
+    );
     this.statusIndicator.addClass(`status-${status}`);
 
     const statusText: Record<string, string> = {
@@ -1195,7 +1217,9 @@ For usage information, check [console.anthropic.com](https://console.anthropic.c
 
     // Trigger resize (but don't re-sync to avoid loop)
     setCssProps(this.textarea, { "--chat-input-height": "auto" });
-    setCssProps(this.textarea, { "--chat-input-height": Math.min(this.textarea.scrollHeight, 200) + "px" });
+    setCssProps(this.textarea, {
+      "--chat-input-height": Math.min(this.textarea.scrollHeight, 200) + "px",
+    });
   }
 
   /**

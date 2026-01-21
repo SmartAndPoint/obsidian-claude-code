@@ -130,10 +130,7 @@ export interface IAcpClient {
    * @param options - Optional prompt options
    * @returns Array of all events
    */
-  sendMessageSync(
-    text: string,
-    options?: SendMessageOptions
-  ): Promise<StreamEvent[]>;
+  sendMessageSync(text: string, options?: SendMessageOptions): Promise<StreamEvent[]>;
 
   /**
    * Cancel an ongoing prompt.

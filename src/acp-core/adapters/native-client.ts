@@ -54,7 +54,13 @@ class NativeTerminalHandle implements ITerminalHandle {
   private exitPromise: Promise<WaitForTerminalExitResult>;
   private exitResolve: ((result: WaitForTerminalExitResult) => void) | null = null;
 
-  constructor(id: string, command: string, args: string[] = [], cwd?: string, env?: Record<string, string>) {
+  constructor(
+    id: string,
+    command: string,
+    args: string[] = [],
+    cwd?: string,
+    env?: Record<string, string>
+  ) {
     this._id = id;
 
     this.exitPromise = new Promise((resolve) => {
@@ -182,15 +188,11 @@ export class NativeAcpClient implements IAcpClient {
         return this.handleWriteTextFile(params);
       },
 
-      readTextFile: async (
-        params: acp.ReadTextFileRequest
-      ): Promise<acp.ReadTextFileResponse> => {
+      readTextFile: async (params: acp.ReadTextFileRequest): Promise<acp.ReadTextFileResponse> => {
         return this.handleReadTextFile(params);
       },
 
-      createTerminal: (
-        params: acp.CreateTerminalRequest
-      ): Promise<acp.CreateTerminalResponse> => {
+      createTerminal: (params: acp.CreateTerminalRequest): Promise<acp.CreateTerminalResponse> => {
         return Promise.resolve(this.handleCreateTerminal(params));
       },
     };
@@ -211,7 +213,9 @@ export class NativeAcpClient implements IAcpClient {
       const binaryPath = sessionConfig.binaryPath ?? this.findBinary();
 
       if (!binaryPath) {
-        throw new Error("Claude Code ACP binary not found. Please install @zed-industries/claude-code-acp or specify binaryPath.");
+        throw new Error(
+          "Claude Code ACP binary not found. Please install @zed-industries/claude-code-acp or specify binaryPath."
+        );
       }
 
       // Check for API key
@@ -370,14 +374,22 @@ export class NativeAcpClient implements IAcpClient {
     }
     return {
       loadSession: caps.loadSession ?? undefined,
-      mcpCapabilities: caps.mcpCapabilities ? {
-        servers: true,
-      } : undefined,
-      sessionCapabilities: caps.sessionCapabilities ? {
-        fork: caps.sessionCapabilities.fork !== null && caps.sessionCapabilities.fork !== undefined,
-        resume: caps.sessionCapabilities.resume !== null && caps.sessionCapabilities.resume !== undefined,
-        list: caps.sessionCapabilities.list !== null && caps.sessionCapabilities.list !== undefined,
-      } : undefined,
+      mcpCapabilities: caps.mcpCapabilities
+        ? {
+            servers: true,
+          }
+        : undefined,
+      sessionCapabilities: caps.sessionCapabilities
+        ? {
+            fork:
+              caps.sessionCapabilities.fork !== null && caps.sessionCapabilities.fork !== undefined,
+            resume:
+              caps.sessionCapabilities.resume !== null &&
+              caps.sessionCapabilities.resume !== undefined,
+            list:
+              caps.sessionCapabilities.list !== null && caps.sessionCapabilities.list !== undefined,
+          }
+        : undefined,
     };
   }
 
@@ -432,10 +444,7 @@ export class NativeAcpClient implements IAcpClient {
     }
   }
 
-  async sendMessageSync(
-    text: string,
-    options?: SendMessageOptions
-  ): Promise<StreamEvent[]> {
+  async sendMessageSync(text: string, options?: SendMessageOptions): Promise<StreamEvent[]> {
     const events: StreamEvent[] = [];
 
     for await (const event of this.sendMessage(text, options)) {
@@ -646,10 +655,7 @@ export class NativeAcpClient implements IAcpClient {
     return true;
   }
 
-  createTerminal(
-    command: string,
-    options?: CreateTerminalOptions
-  ): Promise<ITerminalHandle> {
+  createTerminal(command: string, options?: CreateTerminalOptions): Promise<ITerminalHandle> {
     if (!this.isConnected()) {
       return Promise.reject(new Error("Not connected"));
     }
@@ -714,7 +720,8 @@ export class NativeAcpClient implements IAcpClient {
 
     if (response.granted) {
       const allowOption = params.options.find((opt) => opt.kind === "allow_once");
-      const optionId = response.optionId ?? allowOption?.optionId ?? params.options[0]?.optionId ?? "allow";
+      const optionId =
+        response.optionId ?? allowOption?.optionId ?? params.options[0]?.optionId ?? "allow";
       return { outcome: { outcome: "selected", optionId } };
     } else {
       return { outcome: { outcome: "cancelled" } };
@@ -803,9 +810,7 @@ export class NativeAcpClient implements IAcpClient {
           type: "session_info",
           info: {
             title: update.title ?? undefined,
-            lastUpdated: update.updatedAt
-              ? new Date(update.updatedAt)
-              : undefined,
+            lastUpdated: update.updatedAt ? new Date(update.updatedAt) : undefined,
           },
         });
         break;
@@ -845,9 +850,7 @@ export class NativeAcpClient implements IAcpClient {
     }
   }
 
-  private handleCreateTerminal(
-    params: acp.CreateTerminalRequest
-  ): acp.CreateTerminalResponse {
+  private handleCreateTerminal(params: acp.CreateTerminalRequest): acp.CreateTerminalResponse {
     const id = `terminal-${++this.terminalIdCounter}`;
     const terminal = new NativeTerminalHandle(
       id,

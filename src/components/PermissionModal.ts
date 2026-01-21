@@ -6,10 +6,7 @@
  */
 
 import { App, Modal } from "obsidian";
-import type {
-  PermissionRequestParams,
-  PermissionResponseParams,
-} from "../acpClient";
+import type { PermissionRequestParams, PermissionResponseParams } from "../acpClient";
 
 export class PermissionModal extends Modal {
   private request: PermissionRequestParams;
@@ -38,7 +35,7 @@ export class PermissionModal extends Modal {
 
     // Header
     const header = contentEl.createDiv({ cls: "permission-header" });
-    header.createEl("h2").setText("⚠️ Permission required");
+    header.createEl("h2").setText("Permission required");
 
     // Tool call info
     const toolInfo = contentEl.createDiv({ cls: "permission-tool-info" });

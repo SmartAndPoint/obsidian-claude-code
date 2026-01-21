@@ -42,11 +42,11 @@ export function parseVaultPath(fullPath: string, vaultBasePath: string): Formatt
   if (lineMatch) {
     startLine = parseInt(lineMatch[1], 10);
     endLine = lineMatch[2] ? parseInt(lineMatch[2], 10) : startLine;
-    relativePath = relativePath.replace(/:(\d+)(?:-(\d+))?$/, '');
+    relativePath = relativePath.replace(/:(\d+)(?:-(\d+))?$/, "");
   }
 
   // Remove leading slash if present
-  if (relativePath.startsWith('/')) {
+  if (relativePath.startsWith("/")) {
     relativePath = relativePath.slice(1);
   }
 
@@ -66,7 +66,7 @@ export function parseVaultPath(fullPath: string, vaultBasePath: string): Formatt
     startLine,
     endLine,
     exists: false, // Will be set by caller with vault access
-    displayText
+    displayText,
   };
 }
 
@@ -167,7 +167,22 @@ export async function openFileAtLine(
     setTimeout(() => {
       const view = leaf.view;
       if (view && "editor" in view) {
-        const editor = (view as unknown as { editor: { setCursor: (pos: { line: number; ch: number }) => void; getLine: (n: number) => string; setSelection: (from: { line: number; ch: number }, to: { line: number; ch: number }) => void; scrollIntoView: (range: { from: { line: number; ch: number }; to: { line: number; ch: number } }, center: boolean) => void } }).editor;
+        const editor = (
+          view as unknown as {
+            editor: {
+              setCursor: (pos: { line: number; ch: number }) => void;
+              getLine: (n: number) => string;
+              setSelection: (
+                from: { line: number; ch: number },
+                to: { line: number; ch: number }
+              ) => void;
+              scrollIntoView: (
+                range: { from: { line: number; ch: number }; to: { line: number; ch: number } },
+                center: boolean
+              ) => void;
+            };
+          }
+        ).editor;
         if (editor) {
           // Convert to 0-based line index
           const line = startLine - 1;
@@ -179,10 +194,7 @@ export async function openFileAtLine(
           // Select the line range if multiple lines
           if (endLineIdx > line) {
             const lastLineLength = editor.getLine(endLineIdx)?.length ?? 0;
-            editor.setSelection(
-              { line, ch: 0 },
-              { line: endLineIdx, ch: lastLineLength }
-            );
+            editor.setSelection({ line, ch: 0 }, { line: endLineIdx, ch: lastLineLength });
           }
 
           // Scroll to center
@@ -219,8 +231,8 @@ export function formatAgentPaths(app: App, text: string): string {
       if (/[\s,;!?()[\]<>"'«»„"'']/.test(char)) break;
 
       // Allow : only if followed by digits (line numbers)
-      if (char === ':') {
-        const nextChar = result[endIndex + 1] || '';
+      if (char === ":") {
+        const nextChar = result[endIndex + 1] || "";
         if (!/\d/.test(nextChar)) break;
       }
 
@@ -238,11 +250,11 @@ export function formatAgentPaths(app: App, text: string): string {
     if (lineMatch) {
       startLine = parseInt(lineMatch[1], 10);
       endLine = lineMatch[2] ? parseInt(lineMatch[2], 10) : startLine;
-      relativePath = relativePath.replace(/:(\d+)(?:-(\d+))?$/, '');
+      relativePath = relativePath.replace(/:(\d+)(?:-(\d+))?$/, "");
     }
 
     // Remove leading slash if present
-    if (relativePath.startsWith('/')) {
+    if (relativePath.startsWith("/")) {
       relativePath = relativePath.slice(1);
     }
 

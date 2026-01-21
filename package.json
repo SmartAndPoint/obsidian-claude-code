@@ -5,14 +5,26 @@
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
-    "build": "npm run lint && npm run typecheck && node esbuild.config.mjs production",
+    "build": "npm run validate && node esbuild.config.mjs production",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write src/",
+    "format:check": "prettier --check src/",
+    "test": "npm run test:acp",
     "test:headless": "npx tsx tests/headless-test.ts",
     "test:acp": "npx tsx src/acp-core/__tests__/client.test.ts",
     "test:acp:integration": "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY npx tsx src/acp-core/__tests__/client.test.ts",
-    "version": "node version.mjs"
+    "validate": "npm run lint && npm run typecheck && npm run test",
+    "validate:quick": "npm run lint && npm run typecheck",
+    "version": "node version.mjs",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "src/**/*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ]
   },
   "keywords": [
     "obsidian",
@@ -31,7 +43,10 @@
     "esbuild": "^0.20.0",
     "eslint": "^9.39.2",
     "eslint-plugin-obsidianmd": "^0.1.9",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "obsidian": "^1.5.7",
+    "prettier": "^3.8.0",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3"
   },

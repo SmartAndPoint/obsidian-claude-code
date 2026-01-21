@@ -22,10 +22,7 @@ import {
   type ToolCallContent,
   type AvailableCommand,
 } from "./acp-core";
-import {
-  ensureBinaryAvailable,
-  ProgressCallback,
-} from "./binaryManager";
+import { ensureBinaryAvailable, ProgressCallback } from "./binaryManager";
 
 /**
  * Extended event interface for Phase 4.1 components
@@ -135,7 +132,9 @@ export class ObsidianAcpClient {
       const binaryInfo = await ensureBinaryAvailable(pluginDir, onDownloadProgress);
 
       if (!binaryInfo) {
-        throw new Error("Failed to find or download claude-code-acp binary. Please install Node.js and npm.");
+        throw new Error(
+          "Failed to find or download claude-code-acp binary. Please install Node.js and npm."
+        );
       }
 
       console.debug(`[ACP] Using binary: ${binaryInfo.path} (${binaryInfo.type})`);
@@ -149,7 +148,7 @@ export class ObsidianAcpClient {
             title: request.toolCall.title,
             kind: request.toolCall.kind,
             status: request.toolCall.status,
-            locations: request.toolCall.locations?.map(path => ({ path })),
+            locations: request.toolCall.locations?.map((path) => ({ path })),
           },
           options: request.options ?? [
             { optionId: "allow_once", name: "Allow once", kind: "allow_once" },
@@ -161,7 +160,7 @@ export class ObsidianAcpClient {
 
         if (response.outcome.outcome === "selected") {
           const optionId = response.outcome.optionId;
-          const selectedOption = sdkRequest.options.find(o => o.optionId === optionId);
+          const selectedOption = sdkRequest.options.find((o) => o.optionId === optionId);
           const isAllow = selectedOption?.kind.includes("allow");
           return { granted: isAllow ?? false, optionId };
         }
@@ -268,7 +267,7 @@ export class ObsidianAcpClient {
       case "plan":
         this.events.onPlan({
           sessionUpdate: "plan",
-          entries: event.entries.map(e => ({
+          entries: event.entries.map((e) => ({
             content: e.title,
             status: e.status,
             priority: e.priority,
@@ -283,7 +282,11 @@ export class ObsidianAcpClient {
       case "commands_update": {
         // Stream event for commands update
         this.availableCommands = event.commands;
-        console.debug("[ACP] Commands update (stream):", this.availableCommands.length, this.availableCommands.map(c => c.name));
+        console.debug(
+          "[ACP] Commands update (stream):",
+          this.availableCommands.length,
+          this.availableCommands.map((c) => c.name)
+        );
         this.events.onAvailableCommandsUpdate?.(this.availableCommands);
         break;
       }
@@ -328,7 +331,7 @@ export class ObsidianAcpClient {
       case "plan": {
         this.events.onPlan({
           sessionUpdate: "plan",
-          entries: update.entries.map(e => ({
+          entries: update.entries.map((e) => ({
             content: e.title,
             status: e.status,
             priority: e.priority,
@@ -343,7 +346,11 @@ export class ObsidianAcpClient {
 
       case "available_commands_update": {
         this.availableCommands = update.availableCommands;
-        console.debug("[ACP] Available commands updated:", this.availableCommands.length, this.availableCommands.map(c => c.name));
+        console.debug(
+          "[ACP] Available commands updated:",
+          this.availableCommands.length,
+          this.availableCommands.map((c) => c.name)
+        );
         this.events.onAvailableCommandsUpdate?.(this.availableCommands);
         break;
       }
@@ -402,7 +409,12 @@ export class ObsidianAcpClient {
     return this.client?.getAvailableModels() ?? [];
   }
 
-  getConfigOptions(): Array<{ id: string; name: string; currentValue?: string; category?: string }> {
+  getConfigOptions(): Array<{
+    id: string;
+    name: string;
+    currentValue?: string;
+    category?: string;
+  }> {
     return this.client?.getConfigOptions() ?? [];
   }
 }

@@ -27,10 +27,7 @@ let defaultImplementation: AcpImplementation = "zed";
  * @param name Implementation identifier
  * @param factory Factory function to create the client
  */
-export function registerImplementation(
-  name: AcpImplementation,
-  factory: AcpClientFactory
-): void {
+export function registerImplementation(name: AcpImplementation, factory: AcpClientFactory): void {
   implementations.set(name, factory);
 }
 
@@ -68,7 +65,7 @@ export function createAcpClient(
   if (!factory) {
     throw new Error(
       `Implementation "${implName}" is not registered. ` +
-      `Available: ${Array.from(implementations.keys()).join(", ")}`
+        `Available: ${Array.from(implementations.keys()).join(", ")}`
     );
   }
 

@@ -40,10 +40,7 @@ import type {
   ToolCallStatus,
 } from "../interfaces";
 
-import {
-  ensureBinaryAvailable,
-  getSpawnArgs,
-} from "../../binaryManager";
+import { ensureBinaryAvailable, getSpawnArgs } from "../../binaryManager";
 
 /**
  * Zed ACP Adapter
@@ -103,15 +100,11 @@ export class ZedAcpAdapter implements IAcpClient {
         return this.handleWriteTextFile(params);
       },
 
-      readTextFile: async (
-        params: acp.ReadTextFileRequest
-      ): Promise<acp.ReadTextFileResponse> => {
+      readTextFile: async (params: acp.ReadTextFileRequest): Promise<acp.ReadTextFileResponse> => {
         return this.handleReadTextFile(params);
       },
 
-      createTerminal: (
-        _params: acp.CreateTerminalRequest
-      ): Promise<acp.CreateTerminalResponse> => {
+      createTerminal: (_params: acp.CreateTerminalRequest): Promise<acp.CreateTerminalResponse> => {
         // Terminal creation is agent-side, not available for client
         return Promise.reject(new Error("Terminal creation not supported from client side"));
       },
@@ -292,16 +285,24 @@ export class ZedAcpAdapter implements IAcpClient {
     }
     return {
       loadSession: caps.loadSession ?? undefined,
-      mcpCapabilities: caps.mcpCapabilities ? {
-        // Note: ACP SDK 0.13.0 mcpCapabilities has http/sse, not servers
-        servers: true, // Assume servers are supported if mcpCapabilities exists
-      } : undefined,
-      sessionCapabilities: caps.sessionCapabilities ? {
-        // Note: ACP SDK 0.13.0 sessionCapabilities has fork/list/resume, but not modes/configOptions/modelSelection
-        fork: caps.sessionCapabilities.fork !== null && caps.sessionCapabilities.fork !== undefined,
-        resume: caps.sessionCapabilities.resume !== null && caps.sessionCapabilities.resume !== undefined,
-        list: caps.sessionCapabilities.list !== null && caps.sessionCapabilities.list !== undefined,
-      } : undefined,
+      mcpCapabilities: caps.mcpCapabilities
+        ? {
+            // Note: ACP SDK 0.13.0 mcpCapabilities has http/sse, not servers
+            servers: true, // Assume servers are supported if mcpCapabilities exists
+          }
+        : undefined,
+      sessionCapabilities: caps.sessionCapabilities
+        ? {
+            // Note: ACP SDK 0.13.0 sessionCapabilities has fork/list/resume, but not modes/configOptions/modelSelection
+            fork:
+              caps.sessionCapabilities.fork !== null && caps.sessionCapabilities.fork !== undefined,
+            resume:
+              caps.sessionCapabilities.resume !== null &&
+              caps.sessionCapabilities.resume !== undefined,
+            list:
+              caps.sessionCapabilities.list !== null && caps.sessionCapabilities.list !== undefined,
+          }
+        : undefined,
     };
   }
 
@@ -350,10 +351,7 @@ export class ZedAcpAdapter implements IAcpClient {
     }
   }
 
-  async sendMessageSync(
-    text: string,
-    options?: SendMessageOptions
-  ): Promise<StreamEvent[]> {
+  async sendMessageSync(text: string, options?: SendMessageOptions): Promise<StreamEvent[]> {
     const events: StreamEvent[] = [];
 
     for await (const event of this.sendMessage(text, options)) {
@@ -568,12 +566,11 @@ export class ZedAcpAdapter implements IAcpClient {
     return false;
   }
 
-  createTerminal(
-    _command: string,
-    _options?: CreateTerminalOptions
-  ): Promise<ITerminalHandle> {
+  createTerminal(_command: string, _options?: CreateTerminalOptions): Promise<ITerminalHandle> {
     // Terminal creation is not supported from client side in ACP SDK
-    return Promise.reject(new Error("Terminal creation not supported from client side. Use agent-side terminal."));
+    return Promise.reject(
+      new Error("Terminal creation not supported from client side. Use agent-side terminal.")
+    );
   }
 
   // ============================================================================
@@ -623,7 +620,8 @@ export class ZedAcpAdapter implements IAcpClient {
 
     if (response.granted) {
       const allowOption = params.options.find((opt) => opt.kind === "allow_once");
-      const optionId = response.optionId ?? allowOption?.optionId ?? params.options[0]?.optionId ?? "allow";
+      const optionId =
+        response.optionId ?? allowOption?.optionId ?? params.options[0]?.optionId ?? "allow";
       return { outcome: { outcome: "selected", optionId } };
     } else {
       return { outcome: { outcome: "cancelled" } };
@@ -634,7 +632,11 @@ export class ZedAcpAdapter implements IAcpClient {
     const update = params.update;
 
     // Debug: log all session updates
-    console.debug("[ZedAdapter] Session update:", update.sessionUpdate, JSON.stringify(update, null, 2));
+    console.debug(
+      "[ZedAdapter] Session update:",
+      update.sessionUpdate,
+      JSON.stringify(update, null, 2)
+    );
 
     switch (update.sessionUpdate) {
       case "agent_message_chunk":
@@ -708,9 +710,7 @@ export class ZedAcpAdapter implements IAcpClient {
           type: "session_info",
           info: {
             title: update.title ?? undefined,
-            lastUpdated: update.updatedAt
-              ? new Date(update.updatedAt)
-              : undefined,
+            lastUpdated: update.updatedAt ? new Date(update.updatedAt) : undefined,
           },
         });
         break;
