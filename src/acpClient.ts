@@ -16,16 +16,11 @@ import {
   type PermissionRequest,
   type PermissionHandler,
   type ContentBlock,
-  type ToolCallUpdate as AcpToolCallUpdate,
-  type ToolCallUpdateUpdate,
-  type PlanUpdate,
   type ToolKind,
   type ToolCallStatus,
   type ToolCallLocation,
   type ToolCallContent,
   type AvailableCommand,
-  type AvailableCommandsUpdate,
-  type CommandsUpdateEvent,
 } from "./acp-core";
 import {
   ensureBinaryAvailable,
@@ -198,8 +193,8 @@ export class ObsidianAcpClient {
           writeFile: async (path: string, content: string) => {
             await fs.writeFile(path, content, { encoding: "utf-8" });
           },
-          exists: async (path: string) => {
-            return existsSync(path);
+          exists: (path: string) => {
+            return Promise.resolve(existsSync(path));
           },
         },
       };
@@ -285,13 +280,13 @@ export class ObsidianAcpClient {
         this.events.onMessageComplete();
         break;
 
-      case "commands_update":
+      case "commands_update": {
         // Stream event for commands update
-        const cmdEvent = event as CommandsUpdateEvent;
-        this.availableCommands = cmdEvent.commands;
+        this.availableCommands = event.commands;
         console.debug("[ACP] Commands update (stream):", this.availableCommands.length, this.availableCommands.map(c => c.name));
         this.events.onAvailableCommandsUpdate?.(this.availableCommands);
         break;
+      }
 
       case "error":
         this.events.onError(event.error);
@@ -318,40 +313,40 @@ export class ObsidianAcpClient {
 
       case "tool_call":
         this.events.onToolCall({
-          ...(update as AcpToolCallUpdate),
+          ...update,
           sessionUpdate: "tool_call",
         });
         break;
 
       case "tool_call_update":
         this.events.onToolCallUpdate({
-          ...(update as ToolCallUpdateUpdate),
+          ...update,
           sessionUpdate: "tool_call_update",
         });
         break;
 
-      case "plan":
-        const planUpdate = update as PlanUpdate;
+      case "plan": {
         this.events.onPlan({
           sessionUpdate: "plan",
-          entries: planUpdate.entries.map(e => ({
+          entries: update.entries.map(e => ({
             content: e.title,
             status: e.status,
             priority: e.priority,
           })),
         });
         break;
+      }
 
       case "user_message_chunk":
         console.debug("[ACP] User message echo:", update.content);
         break;
 
-      case "available_commands_update":
-        const commandsUpdate = update as AvailableCommandsUpdate;
-        this.availableCommands = commandsUpdate.availableCommands;
+      case "available_commands_update": {
+        this.availableCommands = update.availableCommands;
         console.debug("[ACP] Available commands updated:", this.availableCommands.length, this.availableCommands.map(c => c.name));
         this.events.onAvailableCommandsUpdate?.(this.availableCommands);
         break;
+      }
 
       case "current_mode_update":
       case "config_option_update":

@@ -64,7 +64,7 @@ export class FileSuggest {
     });
   }
 
-  private handleInput(e: Event): void {
+  private handleInput(_e: Event): void {
     const value = this.inputEl.value;
     const cursorPos = this.inputEl.selectionStart ?? 0;
 

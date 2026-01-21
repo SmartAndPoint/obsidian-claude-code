@@ -17,8 +17,6 @@
 
 import type {
   // Initialization
-  InitializeResult,
-  ClientCapabilities,
   AgentCapabilities,
 
   // Session
@@ -26,7 +24,6 @@ import type {
   SessionConfig,
   SessionMode,
   SessionModeState,
-  SessionInfo,
   McpServerConfig,
 
   // Session management (experimental)

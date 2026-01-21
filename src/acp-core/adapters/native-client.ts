@@ -100,21 +100,22 @@ class NativeTerminalHandle implements ITerminalHandle {
     return this._id;
   }
 
-  async getOutput(): Promise<TerminalOutputResult> {
-    return {
+  getOutput(): Promise<TerminalOutputResult> {
+    return Promise.resolve({
       output: this.output,
       exitStatus: this.exitCode !== null ? { code: this.exitCode } : undefined,
-    };
+    });
   }
 
   async waitForExit(): Promise<WaitForTerminalExitResult> {
     return this.exitPromise;
   }
 
-  async kill(): Promise<void> {
+  kill(): Promise<void> {
     if (this.process && this.exitCode === null) {
       this.process.kill("SIGTERM");
     }
+    return Promise.resolve();
   }
 
   async release(): Promise<void> {
@@ -163,35 +164,34 @@ export class NativeAcpClient implements IAcpClient {
   }
 
   private createAcpClientImpl(): acp.Client {
-     
-    const self = this;
     return {
-      async requestPermission(
+      requestPermission: async (
         params: acp.RequestPermissionRequest
-      ): Promise<acp.RequestPermissionResponse> {
-        return self.handleRequestPermission(params);
+      ): Promise<acp.RequestPermissionResponse> => {
+        return this.handleRequestPermission(params);
       },
 
-      async sessionUpdate(params: acp.SessionNotification): Promise<void> {
-        return self.handleSessionUpdate(params);
+      sessionUpdate: (params: acp.SessionNotification): Promise<void> => {
+        this.handleSessionUpdate(params);
+        return Promise.resolve();
       },
 
-      async writeTextFile(
+      writeTextFile: async (
         params: acp.WriteTextFileRequest
-      ): Promise<acp.WriteTextFileResponse> {
-        return self.handleWriteTextFile(params);
+      ): Promise<acp.WriteTextFileResponse> => {
+        return this.handleWriteTextFile(params);
       },
 
-      async readTextFile(
+      readTextFile: async (
         params: acp.ReadTextFileRequest
-      ): Promise<acp.ReadTextFileResponse> {
-        return self.handleReadTextFile(params);
+      ): Promise<acp.ReadTextFileResponse> => {
+        return this.handleReadTextFile(params);
       },
 
-      async createTerminal(
+      createTerminal: (
         params: acp.CreateTerminalRequest
-      ): Promise<acp.CreateTerminalResponse> {
-        return self.handleCreateTerminal(params);
+      ): Promise<acp.CreateTerminalResponse> => {
+        return Promise.resolve(this.handleCreateTerminal(params));
       },
     };
   }
@@ -208,7 +208,7 @@ export class NativeAcpClient implements IAcpClient {
       });
 
       // Get the binary path from config or find it
-      const binaryPath = sessionConfig.binaryPath ?? await this.findBinary();
+      const binaryPath = sessionConfig.binaryPath ?? this.findBinary();
 
       if (!binaryPath) {
         throw new Error("Claude Code ACP binary not found. Please install @zed-industries/claude-code-acp or specify binaryPath.");
@@ -646,12 +646,12 @@ export class NativeAcpClient implements IAcpClient {
     return true;
   }
 
-  async createTerminal(
+  createTerminal(
     command: string,
     options?: CreateTerminalOptions
   ): Promise<ITerminalHandle> {
     if (!this.isConnected()) {
-      throw new Error("Not connected");
+      return Promise.reject(new Error("Not connected"));
     }
 
     const id = `terminal-${++this.terminalIdCounter}`;
@@ -664,7 +664,7 @@ export class NativeAcpClient implements IAcpClient {
     );
 
     this.terminals.set(id, terminal);
-    return terminal;
+    return Promise.resolve(terminal);
   }
 
   // ============================================================================
@@ -721,7 +721,7 @@ export class NativeAcpClient implements IAcpClient {
     }
   }
 
-  private async handleSessionUpdate(params: acp.SessionNotification): Promise<void> {
+  private handleSessionUpdate(params: acp.SessionNotification): void {
     const update = params.update;
 
     // Log all session updates for debugging
@@ -845,9 +845,9 @@ export class NativeAcpClient implements IAcpClient {
     }
   }
 
-  private async handleCreateTerminal(
+  private handleCreateTerminal(
     params: acp.CreateTerminalRequest
-  ): Promise<acp.CreateTerminalResponse> {
+  ): acp.CreateTerminalResponse {
     const id = `terminal-${++this.terminalIdCounter}`;
     const terminal = new NativeTerminalHandle(
       id,
@@ -865,7 +865,7 @@ export class NativeAcpClient implements IAcpClient {
   // Private Helpers
   // ============================================================================
 
-  private async findBinary(): Promise<string | null> {
+  private findBinary(): string | null {
     // Try to find the binary in node_modules
     const possiblePaths = [
       "./node_modules/@zed-industries/claude-code-acp/dist/index.js",
@@ -936,18 +936,16 @@ export class NativeAcpClient implements IAcpClient {
         // Handle both SessionConfigSelectOption and SessionConfigSelectGroup
         if ("options" in o) {
           // It's a group - extract group info
-          const group = o as acp.SessionConfigSelectGroup;
           return {
-            id: group.group,
-            label: group.name,
+            id: o.group,
+            label: o.name,
           };
         }
         // It's a regular option
-        const selectOpt = o as acp.SessionConfigSelectOption;
         return {
-          id: selectOpt.value,
-          label: selectOpt.name,
-          description: selectOpt.description ?? undefined,
+          id: o.value,
+          label: o.name,
+          description: o.description ?? undefined,
         };
       }),
     }));

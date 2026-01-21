@@ -85,36 +85,35 @@ export class ZedAcpAdapter implements IAcpClient {
   }
 
   private createAcpClientImpl(): acp.Client {
-     
-    const self = this;
     return {
-      async requestPermission(
+      requestPermission: async (
         params: acp.RequestPermissionRequest
-      ): Promise<acp.RequestPermissionResponse> {
-        return self.handleRequestPermission(params);
+      ): Promise<acp.RequestPermissionResponse> => {
+        return this.handleRequestPermission(params);
       },
 
-      async sessionUpdate(params: acp.SessionNotification): Promise<void> {
-        return self.handleSessionUpdate(params);
+      sessionUpdate: (params: acp.SessionNotification): Promise<void> => {
+        this.handleSessionUpdate(params);
+        return Promise.resolve();
       },
 
-      async writeTextFile(
+      writeTextFile: async (
         params: acp.WriteTextFileRequest
-      ): Promise<acp.WriteTextFileResponse> {
-        return self.handleWriteTextFile(params);
+      ): Promise<acp.WriteTextFileResponse> => {
+        return this.handleWriteTextFile(params);
       },
 
-      async readTextFile(
+      readTextFile: async (
         params: acp.ReadTextFileRequest
-      ): Promise<acp.ReadTextFileResponse> {
-        return self.handleReadTextFile(params);
+      ): Promise<acp.ReadTextFileResponse> => {
+        return this.handleReadTextFile(params);
       },
 
-      async createTerminal(
+      createTerminal: (
         _params: acp.CreateTerminalRequest
-      ): Promise<acp.CreateTerminalResponse> {
+      ): Promise<acp.CreateTerminalResponse> => {
         // Terminal creation is agent-side, not available for client
-        throw new Error("Terminal creation not supported from client side");
+        return Promise.reject(new Error("Terminal creation not supported from client side"));
       },
     };
   }
@@ -258,7 +257,7 @@ export class ZedAcpAdapter implements IAcpClient {
     }
   }
 
-  async disconnect(): Promise<void> {
+  disconnect(): Promise<void> {
     if (this.process) {
       this.process.kill();
       this.process = null;
@@ -272,6 +271,7 @@ export class ZedAcpAdapter implements IAcpClient {
     this.initResult = null;
 
     this.config.onDisconnect?.();
+    return Promise.resolve();
   }
 
   isConnected(): boolean {
@@ -568,12 +568,12 @@ export class ZedAcpAdapter implements IAcpClient {
     return false;
   }
 
-  async createTerminal(
+  createTerminal(
     _command: string,
     _options?: CreateTerminalOptions
   ): Promise<ITerminalHandle> {
     // Terminal creation is not supported from client side in ACP SDK
-    throw new Error("Terminal creation not supported from client side. Use agent-side terminal.");
+    return Promise.reject(new Error("Terminal creation not supported from client side. Use agent-side terminal."));
   }
 
   // ============================================================================
@@ -630,7 +630,7 @@ export class ZedAcpAdapter implements IAcpClient {
     }
   }
 
-  private async handleSessionUpdate(params: acp.SessionNotification): Promise<void> {
+  private handleSessionUpdate(params: acp.SessionNotification): void {
     const update = params.update;
 
     // Debug: log all session updates
@@ -787,18 +787,16 @@ export class ZedAcpAdapter implements IAcpClient {
         // Handle both SessionConfigSelectOption and SessionConfigSelectGroup
         if ("options" in o) {
           // It's a group - extract group info
-          const group = o as acp.SessionConfigSelectGroup;
           return {
-            id: group.group,
-            label: group.name,
+            id: o.group,
+            label: o.name,
           };
         }
         // It's a regular option
-        const selectOpt = o as acp.SessionConfigSelectOption;
         return {
-          id: selectOpt.value,
-          label: selectOpt.name,
-          description: selectOpt.description ?? undefined,
+          id: o.value,
+          label: o.name,
+          description: o.description ?? undefined,
         };
       }),
     }));

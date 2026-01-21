@@ -112,9 +112,8 @@ export interface AuthenticateParams {
   methodId: string;
 }
 
-export interface AuthenticateResult {
-  // Empty on success
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- ACP protocol: empty response on success
+export interface AuthenticateResult {}
 
 // ============================================================================
 // Session Types
@@ -209,9 +208,8 @@ export interface SetSessionModeParams {
   modeId: string;
 }
 
-export interface SetSessionModeResult {
-  // Empty on success
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- ACP protocol: empty response on success
+export interface SetSessionModeResult {}
 
 // ============================================================================
 // Session Model Types (Experimental)
@@ -236,9 +234,8 @@ export interface SetSessionModelParams {
   modelId: string;
 }
 
-export interface SetSessionModelResult {
-  // Empty on success
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- ACP protocol: empty response on success
+export interface SetSessionModelResult {}
 
 // ============================================================================
 // Session Config Types (Experimental)
@@ -313,9 +310,7 @@ export interface LoadSessionParams {
   mcpServers?: McpServerConfig[];
 }
 
-export interface LoadSessionResult extends NewSessionResult {
-  // Same as NewSessionResult
-}
+export type LoadSessionResult = NewSessionResult;
 
 export interface ForkSessionParams {
   /** Session ID to fork */
@@ -336,9 +331,7 @@ export interface ResumeSessionParams {
   mcpServers?: McpServerConfig[];
 }
 
-export interface ResumeSessionResult extends NewSessionResult {
-  // Same as NewSessionResult
-}
+export type ResumeSessionResult = NewSessionResult;
 
 // ============================================================================
 // Prompt Types
@@ -733,9 +726,8 @@ export interface WriteTextFileParams {
   content: string;
 }
 
-export interface WriteTextFileResult {
-  // Empty on success
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- ACP protocol: empty response on success
+export interface WriteTextFileResult {}
 
 export interface FileSystemHandler {
   readFile(path: string): Promise<string>;
@@ -788,18 +780,16 @@ export interface KillTerminalParams {
   terminalId: string;
 }
 
-export interface KillTerminalResult {
-  // Empty on success
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- ACP protocol: empty response on success
+export interface KillTerminalResult {}
 
 export interface ReleaseTerminalParams {
   sessionId: string;
   terminalId: string;
 }
 
-export interface ReleaseTerminalResult {
-  // Empty on success
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- ACP protocol: empty response on success
+export interface ReleaseTerminalResult {}
 
 // ============================================================================
 // Stream Event Types (for our streaming interface)

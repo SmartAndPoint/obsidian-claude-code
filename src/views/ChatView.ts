@@ -2,10 +2,6 @@ import { ItemView, WorkspaceLeaf, MarkdownRenderer, setIcon, MarkdownView } from
 import type ClaudeCodePlugin from "../main";
 import type {
   ContentBlock,
-  ToolKind,
-  ToolCallStatus,
-  ToolCallLocation,
-  ToolCallContent,
   Diff,
 } from "../acp-core";
 import type {
