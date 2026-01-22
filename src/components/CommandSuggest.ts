@@ -24,7 +24,7 @@ const BUILTIN_COMMANDS: AvailableCommand[] = [
   { name: "/clear", description: "Clear the conversation history" },
   { name: "/help", description: "Show available commands and usage help" },
   { name: "/status", description: "Show connection status and session info" },
-  { name: "/reconnect", description: "Disconnect and reconnect to Claude Code" },
+  { name: "/reconnect", description: "Disconnect and reconnect" },
   { name: "/compact", description: "Toggle compact message display mode" },
   { name: "/cost", description: "Show estimated session cost (if available)" },
   { name: "/model", description: "Show current model information" },

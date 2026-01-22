@@ -217,7 +217,7 @@ export class ChatView extends ItemView {
     // Welcome message
     this.addMessage({
       role: "assistant",
-      content: "Welcome! Click the plug icon to connect to Claude Code, then start chatting.",
+      content: "Welcome! Click the plug icon to connect, then start chatting.",
       timestamp: new Date(),
     });
   }
@@ -270,7 +270,7 @@ export class ChatView extends ItemView {
     if (!this.plugin.isConnected()) {
       this.addMessage({
         role: "assistant",
-        content: "⚠️ Not connected. Click the plug icon to connect first.",
+        content: "Not connected. Click the plug icon to connect first.",
         timestamp: new Date(),
       });
       return;
@@ -995,7 +995,7 @@ export class ChatView extends ItemView {
 | \`/clear\` | Clear the conversation history |
 | \`/help\` | Show this help message |
 | \`/status\` | Show connection status |
-| \`/reconnect\` | Reconnect to Claude Code |
+| \`/reconnect\` | Reconnect |
 | \`/compact\` | Toggle compact display mode |
 | \`/cost\` | Show session cost info |
 | \`/model\` | Show current model |
@@ -1160,7 +1160,7 @@ For usage information, check [console.anthropic.com](https://console.anthropic.c
       }
     } else {
       content += `_No configuration options available from ACP._\n\n`;
-      content += `Plugin settings can be configured in Obsidian Settings > Community Plugins > Claude Code.`;
+      content += `Plugin settings can be configured in Obsidian settings.`;
     }
 
     this.addMessage({

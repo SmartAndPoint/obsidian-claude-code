@@ -72,7 +72,7 @@ export default class ClaudeCodePlugin extends Plugin {
       // Connection lifecycle
       onError: (error) => {
         console.error("[ACP Error]", error);
-        new Notice(`Claude Code Integration: ${error.message}`);
+        new Notice(`Error: ${error.message}`);
         this.getChatView()?.updateStatus("disconnected");
       },
       onConnected: () => {
