@@ -158,7 +158,7 @@ export class ChatView extends ItemView {
 
     this.textarea = inputRow.createEl("textarea", {
       cls: "chat-input",
-      attr: { placeholder: "Ask Claude Code..." },
+      attr: { placeholder: "Type a message..." },
     });
 
     this.textarea.addEventListener("keydown", (e) => {
@@ -500,7 +500,7 @@ export class ChatView extends ItemView {
     planEl.empty();
 
     const header = planEl.createDiv({ cls: "plan-header" });
-    header.setText("📋 Plan");
+    header.setText("Plan");
 
     const entries = planEl.createDiv({ cls: "plan-entries" });
 
