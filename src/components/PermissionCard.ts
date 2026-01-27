@@ -7,14 +7,25 @@
 
 import type { PermissionRequestParams, PermissionResponseParams } from "../acpClient";
 
+export interface PermissionCardOptions {
+  /** Callback when user wants to cancel and provide alternative instructions */
+  onRedirect?: (alternativeText: string) => void;
+}
+
 export class PermissionCard {
   private container: HTMLElement;
   private resolvePromise: ((result: PermissionResponseParams) => void) | null = null;
   private request: PermissionRequestParams;
   private isResolved: boolean = false;
+  private options: PermissionCardOptions;
 
-  constructor(parent: HTMLElement, request: PermissionRequestParams) {
+  constructor(
+    parent: HTMLElement,
+    request: PermissionRequestParams,
+    options?: PermissionCardOptions
+  ) {
     this.request = request;
+    this.options = options ?? {};
     this.container = parent.createDiv({ cls: "permission-card" });
     this.render();
   }
@@ -94,6 +105,110 @@ export class PermissionCard {
       allowAlwaysBtn.setText("Always allow");
       allowAlwaysBtn.addEventListener("click", () => this.handleChoice(allowAlways.optionId));
     }
+
+    // Cancel & redirect button (always available)
+    const redirectBtn = buttons.createEl("button", {
+      cls: "permission-btn permission-btn-redirect",
+    });
+    redirectBtn.setText("Do something else");
+    redirectBtn.addEventListener("click", () => this.showRedirectInput());
+  }
+
+  private showRedirectInput(): void {
+    // Hide buttons row
+    const buttons = this.container.querySelector(".permission-card-buttons");
+    if (buttons) {
+      buttons.addClass("is-hidden");
+    }
+
+    // Create redirect input area
+    const redirectArea = this.container.createDiv({ cls: "permission-card-redirect" });
+
+    const label = redirectArea.createDiv({ cls: "permission-card-redirect-label" });
+    label.setText("What would you like to do instead?");
+
+    const inputRow = redirectArea.createDiv({ cls: "permission-card-redirect-row" });
+
+    const input = inputRow.createEl("textarea", {
+      cls: "permission-card-redirect-input",
+      attr: { placeholder: "For example, don't modify this file..." },
+    });
+
+    const submitBtn = inputRow.createEl("button", {
+      cls: "permission-btn permission-btn-allow",
+    });
+    submitBtn.setText("Send");
+
+    const cancelBtn = inputRow.createEl("button", {
+      cls: "permission-btn permission-btn-reject",
+    });
+    cancelBtn.setText("Back");
+
+    // Handle submit
+    submitBtn.addEventListener("click", () => {
+      const text = input.value.trim();
+      if (text) {
+        this.handleRedirect(text);
+      }
+    });
+
+    // Handle Enter key (without shift)
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        const text = input.value.trim();
+        if (text) {
+          this.handleRedirect(text);
+        }
+      }
+    });
+
+    // Handle cancel - go back to buttons
+    cancelBtn.addEventListener("click", () => {
+      redirectArea.remove();
+      if (buttons) {
+        buttons.removeClass("is-hidden");
+      }
+    });
+
+    // Focus input
+    input.focus();
+  }
+
+  private handleRedirect(alternativeText: string): void {
+    if (this.isResolved) return;
+    this.isResolved = true;
+
+    // Update UI
+    this.container.addClass("permission-card-resolved");
+
+    // Remove redirect area and show status
+    const redirectArea = this.container.querySelector(".permission-card-redirect");
+    if (redirectArea) {
+      redirectArea.remove();
+    }
+
+    const buttons = this.container.querySelector(".permission-card-buttons");
+    if (buttons) {
+      buttons.removeClass("is-hidden");
+      buttons.empty();
+      const status = buttons.createDiv({ cls: "permission-card-status" });
+      status.setText("↩ redirected");
+      status.addClass("status-redirected");
+    }
+
+    // Cancel the permission request
+    if (this.resolvePromise) {
+      this.resolvePromise({
+        outcome: {
+          outcome: "cancelled",
+        },
+      });
+      this.resolvePromise = null;
+    }
+
+    // Call redirect callback with alternative text
+    this.options.onRedirect?.(alternativeText);
   }
 
   private handleChoice(optionId: string): void {

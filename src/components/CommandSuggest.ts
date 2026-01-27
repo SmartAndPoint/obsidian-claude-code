@@ -30,6 +30,7 @@ const BUILTIN_COMMANDS: AvailableCommand[] = [
   { name: "/model", description: "Show current model information" },
   { name: "/modes", description: "Show available session modes" },
   { name: "/config", description: "Show configuration options" },
+  { name: "/rename", description: "Rename current session (usage: /rename New Title)" },
 ];
 
 interface CommandItem {

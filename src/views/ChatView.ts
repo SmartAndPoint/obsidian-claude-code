@@ -17,10 +17,13 @@ import {
   FileSuggest,
   CommandSuggest,
   resolveFileReferences,
+  extractWikilinks,
   SelectionChipsContainer,
   formatAgentPaths,
   DiffModal,
+  SessionPickerModal,
 } from "../components";
+import { VaultSessionService } from "../services/VaultSessionService";
 
 /**
  * Set CSS custom properties on an element
@@ -38,6 +41,15 @@ interface Message {
   content: string;
   timestamp: Date;
 }
+
+/**
+ * Session state for hybrid session management
+ * - disconnected: Not connected to Claude
+ * - live: Claude remembers the conversation context
+ * - history-only: Showing history, but Claude doesn't remember (resume failed)
+ * - resuming: Attempting to resume Claude session
+ */
+type SessionState = "disconnected" | "live" | "history-only" | "resuming";
 
 export class ChatView extends ItemView {
   private plugin: ClaudeCodePlugin;
@@ -83,6 +95,9 @@ export class ChatView extends ItemView {
   // Active permission cards (for cleanup)
   private activePermissionCards: PermissionCard[] = [];
 
+  // Tool call titles for current response (for session tracking)
+  private currentToolCallTitles: string[] = [];
+
   // Batch update for streaming performance
   private pendingText: string = "";
   private updateScheduled: boolean = false;
@@ -99,9 +114,17 @@ export class ChatView extends ItemView {
   // Selection chips for Cmd+L
   private selectionChips: SelectionChipsContainer | null = null;
 
+  // Session management
+  private sessionService: VaultSessionService;
+  private currentVaultSessionId: string | null = null;
+  private sessionInfoEl: HTMLElement | null = null;
+  private sessionState: SessionState = "disconnected";
+  private historyBannerEl: HTMLElement | null = null;
+
   constructor(leaf: WorkspaceLeaf, plugin: ClaudeCodePlugin) {
     super(leaf);
     this.plugin = plugin;
+    this.sessionService = new VaultSessionService(this.app);
   }
 
   getViewType(): string {
@@ -124,8 +147,12 @@ export class ChatView extends ItemView {
 
     // Header with status
     const header = container.createDiv({ cls: "chat-header" });
-    const title = header.createDiv({ cls: "chat-title" });
+    const titleRow = header.createDiv({ cls: "chat-title-row" });
+    const title = titleRow.createDiv({ cls: "chat-title" });
     title.setText("Claude");
+
+    // Session info (shown when session is active)
+    this.sessionInfoEl = titleRow.createDiv({ cls: "chat-session-info is-hidden" });
 
     this.statusIndicator = header.createDiv({ cls: "chat-status" });
     this.updateStatus("disconnected");
@@ -136,10 +163,19 @@ export class ChatView extends ItemView {
     copyAllBtn.setAttribute("aria-label", "Copy entire chat");
     copyAllBtn.addEventListener("click", () => this.copyAllChat());
 
+    // Sessions button
+    const sessionsBtn = header.createEl("button", { cls: "chat-sessions-btn" });
+    setIcon(sessionsBtn, "list");
+    sessionsBtn.setAttribute("aria-label", "Browse sessions");
+    sessionsBtn.addEventListener("click", () => void this.showSessionPicker());
+
     // Connect button
     const connectBtn = header.createEl("button", { cls: "chat-connect-btn" });
     setIcon(connectBtn, "plug");
     connectBtn.addEventListener("click", () => void this.handleConnect());
+
+    // History-only banner (shown when Claude doesn't remember the session)
+    this.createHistoryBanner(container as HTMLElement);
 
     // Messages container
     this.messagesContainer = container.createDiv({ cls: "chat-messages" });
@@ -259,13 +295,34 @@ export class ChatView extends ItemView {
     if (this.plugin.isConnected()) {
       await this.plugin.disconnect();
     } else {
-      await this.plugin.connect();
+      // Check for existing sessions and restore the last one
+      const sessions = await this.sessionService.listSessions();
+
+      if (sessions.length > 0 && !this.currentVaultSessionId) {
+        // Load the most recent session (already sorted by updated date)
+        const lastSession = sessions[0];
+        console.debug(`[ChatView] Auto-restoring last session: ${lastSession.id}`);
+        await this.loadExistingSession(lastSession.id);
+      } else {
+        // No existing sessions, just connect (session will be created on first message)
+        await this.plugin.connect();
+        this.updateSessionState("live");
+      }
     }
   }
 
   private async handleSend(): Promise<void> {
     const text = this.textarea.value.trim();
     if (!text) return;
+
+    // Handle /rename command locally (doesn't need connection)
+    if (text.startsWith("/rename ")) {
+      const newTitle = text.slice("/rename ".length).trim();
+      await this.handleRenameCommand(newTitle);
+      this.textarea.value = "";
+      setCssProps(this.textarea, { "--chat-input-height": "auto" });
+      return;
+    }
 
     if (!this.plugin.isConnected()) {
       this.addMessage({
@@ -311,6 +368,37 @@ export class ChatView extends ItemView {
     // Clear chips after sending
     this.selectionChips?.clear();
 
+    // Auto-create session if none exists
+    if (!this.currentVaultSessionId) {
+      await this.startNewSession();
+      // Link Claude session ID to vault session
+      const claudeSessionId = this.plugin.getSessionId();
+      if (claudeSessionId) {
+        await this.linkClaudeSession(claudeSessionId);
+        console.debug(`[ChatView] Linked Claude session: ${claudeSessionId}`);
+      }
+      console.debug("[ChatView] Auto-created new session on first message");
+    }
+
+    // Track wikilinks as explicit file references (after session exists)
+    const wikilinks = extractWikilinks(text, this.app);
+    if (this.currentVaultSessionId && wikilinks.length > 0) {
+      for (const path of wikilinks) {
+        void this.sessionService.addFileReference(this.currentVaultSessionId, path, "explicit");
+      }
+    }
+
+    // Save user message to session and auto-generate title on first message
+    if (this.currentVaultSessionId) {
+      void this.sessionService
+        .appendMessage(this.currentVaultSessionId, {
+          role: "user",
+          content: displayText,
+          timestamp: new Date(),
+        })
+        .then(() => this.autoGenerateSessionTitle());
+    }
+
     try {
       await this.plugin.sendMessage(resolvedText);
     } catch (error) {
@@ -338,6 +426,7 @@ export class ChatView extends ItemView {
     this.pendingText = "";
     this.updateScheduled = false;
     this.needsParagraphBreak = false;
+    this.currentToolCallTitles = [];
   }
 
   // ===== Session Update Handlers =====
@@ -396,6 +485,14 @@ export class ChatView extends ItemView {
    */
   onToolCall(toolCall: ToolCallData & { sessionUpdate: "tool_call" }): void {
     const toolCallId = toolCall.toolCallId ?? `tool-${Date.now()}`;
+
+    // Track file references from tool calls
+    this.trackToolCallFiles(toolCall);
+
+    // Track tool call title for session saving
+    if (toolCall.title) {
+      this.currentToolCallTitles.push(toolCall.title);
+    }
 
     // Mark that we need paragraph break after tool call
     this.needsParagraphBreak = true;
@@ -465,6 +562,47 @@ export class ChatView extends ItemView {
     }
 
     this.scrollToBottom();
+  }
+
+  /**
+   * Track file references from tool calls
+   */
+  private trackToolCallFiles(toolCall: ToolCallData): void {
+    if (!this.currentVaultSessionId) return;
+    if (!toolCall.locations || toolCall.locations.length === 0) return;
+
+    const vaultPath = (this.app.vault.adapter as unknown as { basePath: string }).basePath;
+    if (!vaultPath) return;
+
+    // Determine reference type based on tool kind
+    // "edit" and "delete" are write operations, others are reads
+    let refType: "read" | "written" = "read";
+    if (toolCall.kind === "edit" || toolCall.kind === "delete") {
+      refType = "written";
+    }
+
+    for (const location of toolCall.locations) {
+      if (!location.path) continue;
+
+      // Convert full path to vault-relative path
+      let relativePath = location.path;
+      if (relativePath.startsWith(vaultPath)) {
+        relativePath = relativePath.slice(vaultPath.length);
+        if (relativePath.startsWith("/")) {
+          relativePath = relativePath.slice(1);
+        }
+      }
+
+      // Only track files that are in the vault
+      const file = this.app.vault.getAbstractFileByPath(relativePath);
+      if (file) {
+        void this.sessionService.addFileReference(
+          this.currentVaultSessionId,
+          relativePath,
+          refType
+        );
+      }
+    }
   }
 
   /**
@@ -589,7 +727,11 @@ export class ChatView extends ItemView {
 
     console.debug(`[ChatView] Showing permission for ${filePath}: 1 of ${totalChanges}`);
 
-    const card = new PermissionCard(this.messagesContainer, modifiedRequest);
+    const card = new PermissionCard(this.messagesContainer, modifiedRequest, {
+      onRedirect: (alternativeText) => {
+        this.handlePermissionRedirect(alternativeText);
+      },
+    });
     this.activePermissionCards.push(card);
     this.scrollToBottom();
 
@@ -618,12 +760,51 @@ export class ChatView extends ItemView {
   }
 
   /**
+   * Handle permission redirect - user wants to cancel and do something else
+   */
+  private handlePermissionRedirect(alternativeText: string): void {
+    // Add user message to show what they requested
+    this.addMessage({
+      role: "user",
+      content: alternativeText,
+      timestamp: new Date(),
+    });
+
+    // Save to session
+    if (this.currentVaultSessionId) {
+      void this.sessionService.appendMessage(this.currentVaultSessionId, {
+        role: "user",
+        content: alternativeText,
+        timestamp: new Date(),
+      });
+    }
+
+    // Reset streaming state for new response
+    this.resetStreamingState();
+    this.updateStatus("thinking");
+
+    // Send the alternative instruction to Claude
+    void this.plugin.sendMessage(alternativeText).catch((error) => {
+      this.addMessage({
+        role: "assistant",
+        content: `❌ Error: ${(error as Error).message}`,
+        timestamp: new Date(),
+      });
+      this.updateStatus("connected");
+    });
+  }
+
+  /**
    * Handle single permission request (non-edit or single edit)
    */
   private async handleSinglePermission(
     request: PermissionRequestParams
   ): Promise<PermissionResponseParams> {
-    const card = new PermissionCard(this.messagesContainer, request);
+    const card = new PermissionCard(this.messagesContainer, request, {
+      onRedirect: (alternativeText) => {
+        this.handlePermissionRedirect(alternativeText);
+      },
+    });
     this.activePermissionCards.push(card);
     this.scrollToBottom();
 
@@ -661,11 +842,21 @@ export class ChatView extends ItemView {
     if (this.currentAssistantMessage) {
       this.finalizeStreamingMessage();
 
-      this.messages.push({
-        role: "assistant",
+      const message = {
+        role: "assistant" as const,
         content: this.currentAssistantMessage,
         timestamp: new Date(),
-      });
+      };
+
+      this.messages.push(message);
+
+      // Save assistant message to session
+      if (this.currentVaultSessionId) {
+        void this.sessionService.appendMessage(this.currentVaultSessionId, {
+          ...message,
+          toolCalls: this.currentToolCallTitles.length > 0 ? this.currentToolCallTitles : undefined,
+        });
+      }
 
       this.currentAssistantMessage = "";
       this.currentStreamingEl = null;
@@ -1001,6 +1192,7 @@ export class ChatView extends ItemView {
 | \`/model\` | Show current model |
 | \`/modes\` | Show available modes |
 | \`/config\` | Show configuration options |
+| \`/rename [title]\` | Rename current session |
 
 ## Keyboard Shortcuts
 
@@ -1141,6 +1333,41 @@ For usage information, check [console.anthropic.com](https://console.anthropic.c
       content,
       timestamp: new Date(),
     });
+  }
+
+  private async handleRenameCommand(newTitle: string): Promise<void> {
+    if (!newTitle) {
+      this.addMessage({
+        role: "assistant",
+        content: "Usage: `/rename New Session Title`",
+        timestamp: new Date(),
+      });
+      return;
+    }
+
+    if (!this.currentVaultSessionId) {
+      this.addMessage({
+        role: "assistant",
+        content: "No active session to rename.",
+        timestamp: new Date(),
+      });
+      return;
+    }
+
+    try {
+      await this.sessionService.renameSession(this.currentVaultSessionId, newTitle);
+      this.addMessage({
+        role: "assistant",
+        content: `Session renamed to: **${newTitle}**`,
+        timestamp: new Date(),
+      });
+    } catch (error) {
+      this.addMessage({
+        role: "assistant",
+        content: `Failed to rename session: ${(error as Error).message}`,
+        timestamp: new Date(),
+      });
+    }
   }
 
   private showConfig(): void {
@@ -1347,5 +1574,381 @@ For usage information, check [console.anthropic.com](https://console.anthropic.c
 
     // Trigger resize
     this.textarea.dispatchEvent(new Event("input"));
+  }
+
+  // ===== Session Management Methods =====
+
+  /**
+   * Start a new vault session
+   */
+  async startNewSession(title?: string): Promise<string> {
+    const session = await this.sessionService.createSession(title);
+    this.currentVaultSessionId = session.id;
+    console.debug(`[ChatView] Started new vault session: ${session.id}`);
+    await this.updateSessionInfo();
+    return session.id;
+  }
+
+  /**
+   * Set the current vault session ID
+   */
+  setCurrentSession(sessionId: string | null): void {
+    this.currentVaultSessionId = sessionId;
+  }
+
+  /**
+   * Get the current vault session ID
+   */
+  getCurrentVaultSessionId(): string | null {
+    return this.currentVaultSessionId;
+  }
+
+  /**
+   * Get the session service
+   */
+  getSessionService(): VaultSessionService {
+    return this.sessionService;
+  }
+
+  /**
+   * Link current vault session to Claude session ID
+   */
+  async linkClaudeSession(claudeSessionId: string): Promise<void> {
+    if (!this.currentVaultSessionId) return;
+    await this.sessionService.linkClaudeSession(this.currentVaultSessionId, claudeSessionId);
+  }
+
+  /**
+   * Update session info display in header
+   */
+  async updateSessionInfo(): Promise<void> {
+    if (!this.sessionInfoEl) return;
+
+    if (!this.currentVaultSessionId) {
+      this.sessionInfoEl.addClass("is-hidden");
+      return;
+    }
+
+    const session = await this.sessionService.getSession(this.currentVaultSessionId);
+    if (!session) {
+      this.sessionInfoEl.addClass("is-hidden");
+      return;
+    }
+
+    this.sessionInfoEl.removeClass("is-hidden");
+    this.sessionInfoEl.empty();
+
+    // Session title (clickable to rename)
+    const titleEl = this.sessionInfoEl.createSpan({ cls: "session-title" });
+    titleEl.setText(session.title);
+    titleEl.setAttribute("title", "Click to rename session");
+    titleEl.addEventListener("click", () => {
+      void this.promptRenameSession();
+    });
+
+    // File count badge
+    if (session.referencedFiles.length > 0) {
+      const badge = this.sessionInfoEl.createSpan({ cls: "session-files-badge" });
+      badge.setText(`${session.referencedFiles.length} files`);
+      badge.setAttribute("title", session.referencedFiles.map((f) => f.path).join("\n"));
+    }
+
+    // Message count
+    const msgCount = this.sessionInfoEl.createSpan({ cls: "session-msg-count" });
+    msgCount.setText(`${session.messageCount} msgs`);
+  }
+
+  /**
+   * Prompt user to rename session
+   */
+  private async promptRenameSession(): Promise<void> {
+    if (!this.currentVaultSessionId) return;
+
+    const session = await this.sessionService.getSession(this.currentVaultSessionId);
+    if (!session) return;
+
+    // Use simple prompt - in the future could use a modal
+    const newTitle = prompt("Rename session:", session.title);
+    if (newTitle && newTitle !== session.title) {
+      await this.sessionService.renameSession(this.currentVaultSessionId, newTitle);
+      await this.updateSessionInfo();
+    }
+  }
+
+  /**
+   * Auto-generate session title based on content
+   * Only updates if title is still the default "Session ..." format
+   */
+  private async autoGenerateSessionTitle(): Promise<void> {
+    if (!this.currentVaultSessionId) return;
+
+    const session = await this.sessionService.getSession(this.currentVaultSessionId);
+    if (!session) return;
+
+    // Only auto-generate if title is still default
+    if (session.title.startsWith("Session ") && session.messageCount <= 1) {
+      const newTitle = this.sessionService.generateTitle(session);
+      if (newTitle !== session.title) {
+        await this.sessionService.renameSession(this.currentVaultSessionId, newTitle);
+        console.debug(`[ChatView] Auto-generated session title: ${newTitle}`);
+        await this.updateSessionInfo();
+      }
+    }
+  }
+
+  /**
+   * Show the session picker modal
+   */
+  private async showSessionPicker(): Promise<void> {
+    const sessions = await this.sessionService.listSessions();
+
+    const picker = new SessionPickerModal(this.app, sessions, async (id: string) => {
+      await this.sessionService.deleteSession(id);
+    });
+
+    const result = await picker.waitForSelection();
+
+    if (result.action === "cancel") {
+      return;
+    }
+
+    if (result.action === "new") {
+      // Start new session and connect
+      await this.startNewSessionAndConnect();
+    } else if (result.action === "select" && result.sessionId) {
+      // Load existing session
+      await this.loadExistingSession(result.sessionId);
+    }
+  }
+
+  /**
+   * Start a new session and connect
+   */
+  private async startNewSessionAndConnect(): Promise<void> {
+    // Clear current state
+    this.clearConversationState();
+
+    // Create new vault session
+    await this.startNewSession();
+
+    // Connect to Claude
+    if (!this.plugin.isConnected()) {
+      await this.plugin.connect();
+    }
+
+    // Link Claude session ID to vault session
+    const claudeSessionId = this.plugin.getSessionId();
+    if (claudeSessionId && this.currentVaultSessionId) {
+      await this.linkClaudeSession(claudeSessionId);
+      console.debug(`[ChatView] Linked Claude session: ${claudeSessionId}`);
+    }
+
+    this.updateSessionState("live");
+  }
+
+  /**
+   * Load an existing session
+   */
+  private async loadExistingSession(sessionId: string): Promise<void> {
+    const session = await this.sessionService.getSession(sessionId);
+    if (!session) {
+      this.addMessage({
+        role: "assistant",
+        content: `Session not found: ${sessionId}`,
+        timestamp: new Date(),
+      });
+      return;
+    }
+
+    // Clear current state
+    this.clearConversationState();
+
+    // Set current session
+    this.currentVaultSessionId = sessionId;
+
+    // Load messages from vault session
+    for (const msg of session.messages) {
+      this.addMessage({
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp,
+      });
+    }
+
+    await this.updateSessionInfo();
+
+    // Try to resume Claude session if we have a stored ID
+    if (session.claudeSessionId) {
+      this.updateSessionState("resuming");
+      this.addMessage({
+        role: "assistant",
+        content: `Attempting to resume Claude session...`,
+        timestamp: new Date(),
+      });
+
+      try {
+        await this.plugin.connectWithSession(session.claudeSessionId);
+        this.updateSessionState("live");
+        this.addMessage({
+          role: "assistant",
+          content: `✓ Session resumed. Claude remembers this conversation.`,
+          timestamp: new Date(),
+        });
+      } catch (error) {
+        console.warn(`[ChatView] Failed to resume session: ${(error as Error).message}`);
+        this.updateSessionState("history-only");
+        this.addMessage({
+          role: "assistant",
+          content: `Session loaded: **${session.title}** (${session.messageCount} messages)\n\n⚠️ Claude doesn't remember this conversation. Use the banner above to continue with context.`,
+          timestamp: new Date(),
+        });
+        return; // Don't auto-connect, let user decide
+      }
+    } else {
+      // No Claude session ID - this is a fresh session or history only
+      if (session.messages.length > 0) {
+        // Has history but no Claude session - show as history-only
+        this.updateSessionState("history-only");
+        this.addMessage({
+          role: "assistant",
+          content: `Session loaded: **${session.title}** (${session.messageCount} messages)\n\n⚠️ Claude doesn't remember this conversation. Use the banner above to continue with context.`,
+          timestamp: new Date(),
+        });
+        return;
+      } else {
+        // Empty session - connect normally
+        await this.plugin.connect();
+        this.updateSessionState("live");
+      }
+    }
+
+    this.addMessage({
+      role: "assistant",
+      content: `Session loaded: **${session.title}** (${session.messageCount} messages)`,
+      timestamp: new Date(),
+    });
+  }
+
+  /**
+   * Clear conversation state without adding message
+   */
+  private clearConversationState(): void {
+    this.messages = [];
+    this.messagesContainer.empty();
+    this.toolCallCards.clear();
+    this.pendingEditsByFile.clear();
+    this.pendingPermissionsByFile.clear();
+    this.autoApprovedFiles.clear();
+    this.currentThinkingBlock = null;
+    this.currentStreamingEl = null;
+    this.currentAssistantMessage = "";
+    this.currentVaultSessionId = null;
+    this.updateSessionState("disconnected");
+  }
+
+  /**
+   * Update session state and manage history banner visibility
+   */
+  private updateSessionState(state: SessionState): void {
+    this.sessionState = state;
+
+    // Show/hide history banner based on state
+    if (this.historyBannerEl) {
+      if (state === "history-only") {
+        this.historyBannerEl.removeClass("is-hidden");
+      } else {
+        this.historyBannerEl.addClass("is-hidden");
+      }
+    }
+
+    console.debug(`[ChatView] Session state: ${state}`);
+  }
+
+  /**
+   * Create the history-only banner UI
+   */
+  private createHistoryBanner(container: HTMLElement): void {
+    this.historyBannerEl = container.createDiv({ cls: "history-banner is-hidden" });
+
+    const icon = this.historyBannerEl.createSpan({ cls: "history-banner-icon" });
+    icon.setText("⚠️");
+
+    const textContainer = this.historyBannerEl.createDiv({ cls: "history-banner-text" });
+    textContainer.createDiv({ cls: "history-banner-title" }).setText("Viewing history only");
+    textContainer
+      .createDiv({ cls: "history-banner-subtitle" })
+      .setText("Claude doesn't remember this conversation");
+
+    const continueBtn = this.historyBannerEl.createEl("button", {
+      cls: "history-banner-btn",
+    });
+    continueBtn.setText("Continue with context");
+    continueBtn.addEventListener("click", () => {
+      void this.continueWithContext();
+    });
+  }
+
+  /**
+   * Continue conversation by injecting context from history
+   */
+  private async continueWithContext(): Promise<void> {
+    // Will be implemented in Phase 4
+    this.addMessage({
+      role: "assistant",
+      content: "Preparing to continue with context...",
+      timestamp: new Date(),
+    });
+
+    try {
+      // Build context from history
+      const context = this.buildContextSummary();
+
+      // Connect to Claude (new session)
+      await this.plugin.connect();
+
+      // Send context as initial message
+      const contextMessage = `I'm continuing a previous conversation. Here's the context of what we discussed:\n\n${context}\n\nPlease acknowledge you understand the context and are ready to continue.`;
+
+      this.updateSessionState("live");
+
+      // Update claudeSessionId in vault session
+      const newClaudeSessionId = this.plugin.getSessionId();
+      if (this.currentVaultSessionId && newClaudeSessionId) {
+        await this.sessionService.linkClaudeSession(this.currentVaultSessionId, newClaudeSessionId);
+      }
+
+      // Send the context message
+      await this.plugin.sendMessage(contextMessage);
+    } catch (error) {
+      this.addMessage({
+        role: "assistant",
+        content: `Failed to continue with context: ${(error as Error).message}`,
+        timestamp: new Date(),
+      });
+      this.updateSessionState("history-only");
+    }
+  }
+
+  /**
+   * Build a context summary from conversation history
+   */
+  private buildContextSummary(): string {
+    // Take last 10 messages or fewer
+    const recentMessages = this.messages.slice(-10);
+
+    if (recentMessages.length === 0) {
+      return "No previous messages in this session.";
+    }
+
+    const summary = recentMessages
+      .map((msg) => {
+        const role = msg.role === "user" ? "User" : "Assistant";
+        // Truncate long messages
+        const content = msg.content.length > 500 ? msg.content.slice(0, 500) + "..." : msg.content;
+        return `**${role}**: ${content}`;
+      })
+      .join("\n\n");
+
+    return summary;
   }
 }

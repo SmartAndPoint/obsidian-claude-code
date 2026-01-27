@@ -216,6 +216,47 @@ export default class ClaudeCodePlugin extends Plugin {
     await this.acpClient?.disconnect();
   }
 
+  /**
+   * Connect and resume an existing Claude session
+   * @param claudeSessionId - The Claude session ID to resume
+   */
+  async connectWithSession(claudeSessionId: string): Promise<void> {
+    try {
+      this.getChatView()?.updateStatus("connecting");
+      const vaultPath = (this.app.vault.adapter as unknown as { basePath: string }).basePath;
+
+      const pluginDir = this.manifest.dir
+        ? `${vaultPath}/.obsidian/plugins/${this.manifest.id}`
+        : __dirname;
+
+      // Connect first
+      await this.acpClient?.connect(vaultPath, pluginDir, undefined, (progress) => {
+        if (progress.status === "downloading" || progress.status === "installing") {
+          new Notice(progress.message, 3000);
+          this.getChatView()?.updateStatus("connecting", progress.message);
+        } else if (progress.status === "error") {
+          new Notice(`Error: ${progress.message}`, 5000);
+        }
+      });
+
+      // Try to resume the session
+      if (this.acpClient?.supportsSessionResume()) {
+        await this.acpClient.resumeSession(claudeSessionId);
+        console.debug(`[Plugin] Resumed Claude session: ${claudeSessionId}`);
+      } else if (this.acpClient?.supportsSessionLoad()) {
+        await this.acpClient.loadSession(claudeSessionId);
+        console.debug(`[Plugin] Loaded Claude session: ${claudeSessionId}`);
+      } else {
+        console.warn("[Plugin] Session resume/load not supported by ACP");
+        throw new Error("Session resume not supported");
+      }
+    } catch (error) {
+      new Notice(`Failed to connect with session: ${(error as Error).message}`);
+      this.getChatView()?.updateStatus("disconnected");
+      throw error;
+    }
+  }
+
   async sendMessage(text: string): Promise<void> {
     if (!this.acpClient?.isConnected()) {
       throw new Error("Not connected");

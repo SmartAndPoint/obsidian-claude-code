@@ -96,6 +96,106 @@
   background: var(--background-modifier-hover);
 }
 
+/* Title row with session info */
+.chat-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-grow: 1;
+  min-width: 0;
+}
+
+/* Session info */
+.chat-session-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+}
+
+.session-title {
+  color: var(--text-normal);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-title:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-accent);
+}
+
+.session-files-badge {
+  background: var(--background-secondary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+}
+
+.session-msg-count {
+  color: var(--text-faint);
+  font-size: 10px;
+}
+
+/* History Banner - shown when Claude doesn't remember the session */
+.history-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--background-secondary);
+  border-bottom: 1px solid var(--background-modifier-border);
+  border-left: 3px solid var(--text-warning);
+}
+
+.history-banner.is-hidden {
+  display: none;
+}
+
+.history-banner-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.history-banner-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.history-banner-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-normal);
+}
+
+.history-banner-subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.history-banner-btn {
+  padding: 6px 12px;
+  font-size: 12px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.history-banner-btn:hover {
+  background: var(--interactive-accent-hover);
+}
+
 /* Messages */
 .chat-messages {
   flex-grow: 1;
@@ -940,6 +1040,63 @@
   color: var(--text-error);
 }
 
+.permission-card-status.status-redirected {
+  color: var(--text-accent);
+}
+
+.permission-btn-redirect {
+  background: transparent;
+  border: 1px solid var(--background-modifier-border);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.permission-btn-redirect:hover {
+  background: var(--background-secondary);
+  color: var(--text-normal);
+}
+
+/* Permission redirect input */
+.permission-card-redirect {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.permission-card-redirect-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.permission-card-redirect-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.permission-card-redirect-input {
+  flex: 1;
+  min-height: 60px;
+  padding: 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 13px;
+  resize: vertical;
+}
+
+.permission-card-redirect-input:focus {
+  border-color: var(--interactive-accent);
+  outline: none;
+}
+
+.permission-card-redirect-row .permission-btn {
+  align-self: flex-end;
+  height: 32px;
+}
+
 /* ===== Collapsed Code Blocks ===== */
 .collapsed-code-block {
   background: var(--background-primary);
@@ -1708,4 +1865,162 @@
 .diff-line-context {
   background: transparent;
   color: var(--text-muted);
+}
+
+/* ===== Session Picker Modal ===== */
+
+.session-picker-modal {
+  max-width: 500px;
+}
+
+.session-picker-header h2 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.session-picker-new-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px dashed var(--background-modifier-border);
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 16px;
+  transition: all 0.15s ease;
+}
+
+.session-picker-new-btn:hover,
+.session-picker-new-btn.is-selected {
+  border-color: var(--interactive-accent);
+  background: var(--background-secondary);
+}
+
+.session-picker-new-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--interactive-accent);
+  background: var(--background-secondary);
+  border-radius: 4px;
+}
+
+.session-picker-new-text {
+  font-weight: 500;
+}
+
+.session-picker-list {
+  max-height: 400px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.session-picker-empty {
+  text-align: center;
+  padding: 32px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.session-picker-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.session-picker-item:hover,
+.session-picker-item.is-selected {
+  border-color: var(--interactive-accent);
+  background: var(--background-secondary);
+}
+
+.session-picker-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.session-picker-item-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.session-picker-item-title {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-picker-item-date {
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.session-picker-item-meta {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.session-picker-item-badge {
+  font-size: 11px;
+  padding: 2px 6px;
+  background: var(--background-secondary-alt);
+  border-radius: 4px;
+  color: var(--text-muted);
+}
+
+.session-picker-item-preview {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 4px;
+}
+
+.session-picker-item-delete {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  border-radius: 4px;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+.session-picker-item:hover .session-picker-item-delete {
+  opacity: 1;
+}
+
+.session-picker-item-delete:hover {
+  color: var(--text-error);
+  background: var(--background-modifier-error);
+}
+
+.session-picker-confirm-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
 }

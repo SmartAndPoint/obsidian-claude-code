@@ -425,3 +425,24 @@ export function resolveFileReferences(text: string, app: App): string {
     return match;
   });
 }
+
+/**
+ * Extract [[wikilink]] paths from text
+ * Returns vault-relative paths for files that exist
+ */
+export function extractWikilinks(text: string, app: App): string[] {
+  const paths: string[] = [];
+  const wikiLinkRegex = /\[\[([^[\]]+)\]\]/g;
+  let match;
+
+  while ((match = wikiLinkRegex.exec(text)) !== null) {
+    const filename = match[1];
+    // Try to find the file in vault
+    const file = app.metadataCache.getFirstLinkpathDest(filename, "");
+    if (file) {
+      paths.push(file.path);
+    }
+  }
+
+  return paths;
+}

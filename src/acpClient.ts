@@ -21,6 +21,11 @@ import {
   type ToolCallLocation,
   type ToolCallContent,
   type AvailableCommand,
+  // Session management types
+  type Session,
+  type AgentCapabilities,
+  type ListSessionsResult,
+  type SessionListItem,
 } from "./acp-core";
 import { ensureBinaryAvailable, ProgressCallback } from "./binaryManager";
 
@@ -417,4 +422,128 @@ export class ObsidianAcpClient {
   }> {
     return this.client?.getConfigOptions() ?? [];
   }
+
+  // ===========================================================================
+  // Session Management Methods
+  // ===========================================================================
+
+  /**
+   * Get agent capabilities including session support.
+   * Use this to check what session features are available before calling them.
+   *
+   * @returns Agent capabilities or null if not connected
+   */
+  getAgentCapabilities(): AgentCapabilities | null {
+    return this.client?.getAgentCapabilities() ?? null;
+  }
+
+  /**
+   * Check if the agent supports session listing.
+   * This is an UNSTABLE feature and may not be available.
+   */
+  supportsSessionList(): boolean {
+    const caps = this.getAgentCapabilities();
+    return caps?.sessionCapabilities?.list !== undefined;
+  }
+
+  /**
+   * Check if the agent supports session resume.
+   * This is an UNSTABLE feature and may not be available.
+   */
+  supportsSessionResume(): boolean {
+    const caps = this.getAgentCapabilities();
+    return caps?.sessionCapabilities?.resume !== undefined;
+  }
+
+  /**
+   * Check if the agent supports session load (stable feature).
+   */
+  supportsSessionLoad(): boolean {
+    const caps = this.getAgentCapabilities();
+    return caps?.loadSession === true;
+  }
+
+  /**
+   * List available sessions for the given working directory.
+   *
+   * NOTE: This is an UNSTABLE ACP feature. Check supportsSessionList() first.
+   *
+   * @param cwd - Working directory to filter sessions (optional)
+   * @returns List of sessions or empty if not supported
+   */
+  async listSessions(cwd?: string): Promise<ListSessionsResult> {
+    if (!this.client) {
+      return { sessions: [] };
+    }
+
+    try {
+      return await this.client.listSessions({ cwd });
+    } catch (error) {
+      console.debug("[ACP] listSessions failed (may not be supported):", error);
+      return { sessions: [] };
+    }
+  }
+
+  /**
+   * Load an existing session by ID.
+   * The session history will be replayed via session updates.
+   *
+   * This is a STABLE ACP feature.
+   *
+   * @param sessionId - Session ID to load
+   * @returns Loaded session
+   * @throws Error if not connected or session not found
+   */
+  async loadSession(sessionId: string): Promise<Session> {
+    if (!this.client) {
+      throw new Error("Not connected");
+    }
+
+    const session = await this.client.loadSession(sessionId);
+    this.currentSessionId = session.id;
+    console.debug(`[ACP] Loaded session: ${this.currentSessionId}`);
+    return session;
+  }
+
+  /**
+   * Resume a session without replaying history.
+   *
+   * NOTE: This is an UNSTABLE ACP feature. Check supportsSessionResume() first.
+   *
+   * @param sessionId - Session ID to resume
+   * @returns Resumed session
+   * @throws Error if not connected or not supported
+   */
+  async resumeSession(sessionId: string): Promise<Session> {
+    if (!this.client) {
+      throw new Error("Not connected");
+    }
+
+    const session = await this.client.resumeSession(sessionId);
+    this.currentSessionId = session.id;
+    console.debug(`[ACP] Resumed session: ${this.currentSessionId}`);
+    return session;
+  }
+
+  /**
+   * Fork a session to create a new independent session.
+   *
+   * NOTE: This is an UNSTABLE ACP feature.
+   *
+   * @param sessionId - Session ID to fork
+   * @returns New forked session ID
+   * @throws Error if not connected or not supported
+   */
+  async forkSession(sessionId: string): Promise<string> {
+    if (!this.client) {
+      throw new Error("Not connected");
+    }
+
+    const newSessionId = await this.client.forkSession(sessionId);
+    console.debug(`[ACP] Forked session ${sessionId} -> ${newSessionId}`);
+    return newSessionId;
+  }
 }
+
+// Re-export session types for consumers
+export type { Session, AgentCapabilities, ListSessionsResult, SessionListItem };
