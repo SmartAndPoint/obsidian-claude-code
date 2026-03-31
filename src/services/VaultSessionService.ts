@@ -542,12 +542,17 @@ export class VaultSessionService {
         if (key === "addedAt" && currentArray) {
           // Convert the generic object to FileReference
           const fileRef: FileReference = {
-            path: String(currentObject.path || ""),
+            path: typeof currentObject.path === "string" ? currentObject.path : "",
             type: (currentObject.type as FileReference["type"]) || "explicit",
             addedAt:
               currentObject.addedAt instanceof Date
                 ? currentObject.addedAt
-                : new Date(String(currentObject.addedAt || Date.now())),
+                : new Date(
+                    typeof currentObject.addedAt === "string" ||
+                      typeof currentObject.addedAt === "number"
+                      ? currentObject.addedAt
+                      : Date.now()
+                  ),
           };
           currentArray.push(fileRef);
           currentObject = null;

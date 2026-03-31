@@ -1,4 +1,12 @@
-import { ItemView, WorkspaceLeaf, MarkdownRenderer, setIcon, MarkdownView } from "obsidian";
+import {
+  ItemView,
+  WorkspaceLeaf,
+  MarkdownRenderer,
+  setIcon,
+  MarkdownView,
+  Modal,
+  Setting,
+} from "obsidian";
 import type ClaudeCodePlugin from "../main";
 import type { ContentBlock, Diff } from "../acp-core";
 import type {
@@ -1667,12 +1675,14 @@ For usage information, check [console.anthropic.com](https://console.anthropic.c
     const session = await this.sessionService.getSession(this.currentVaultSessionId);
     if (!session) return;
 
-    // Use simple prompt - in the future could use a modal
-    const newTitle = prompt("Rename session:", session.title);
-    if (newTitle && newTitle !== session.title) {
-      await this.sessionService.renameSession(this.currentVaultSessionId, newTitle);
-      await this.updateSessionInfo();
-    }
+    const sessionId = this.currentVaultSessionId;
+    const modal = new RenameSessionModal(this.plugin.app, session.title, async (newTitle) => {
+      if (newTitle && newTitle !== session.title) {
+        await this.sessionService.renameSession(sessionId, newTitle);
+        await this.updateSessionInfo();
+      }
+    });
+    modal.open();
   }
 
   /**
@@ -1950,5 +1960,67 @@ For usage information, check [console.anthropic.com](https://console.anthropic.c
       .join("\n\n");
 
     return summary;
+  }
+}
+
+/**
+ * Simple modal for renaming a session
+ */
+class RenameSessionModal extends Modal {
+  private title: string;
+  private onSubmit: (title: string) => Promise<void>;
+
+  constructor(
+    app: import("obsidian").App,
+    currentTitle: string,
+    onSubmit: (title: string) => Promise<void>
+  ) {
+    super(app);
+    this.title = currentTitle;
+    this.onSubmit = onSubmit;
+  }
+
+  onOpen(): void {
+    const { contentEl } = this;
+    contentEl.createEl("h3", { text: "Rename session" });
+
+    new Setting(contentEl).setName("Title").addText((text) => {
+      text.setValue(this.title);
+      text.inputEl.focus();
+      text.inputEl.select();
+      text.onChange((value) => {
+        this.title = value;
+      });
+      text.inputEl.addEventListener("keydown", (e: KeyboardEvent) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          void this.submit();
+        }
+      });
+    });
+
+    new Setting(contentEl)
+      .addButton((btn) =>
+        btn
+          .setButtonText("Save")
+          .setCta()
+          .onClick(() => {
+            void this.submit();
+          })
+      )
+      .addButton((btn) =>
+        btn.setButtonText("Cancel").onClick(() => {
+          this.close();
+        })
+      );
+  }
+
+  private async submit(): Promise<void> {
+    await this.onSubmit(this.title);
+    this.close();
+  }
+
+  onClose(): void {
+    this.contentEl.empty();
   }
 }
