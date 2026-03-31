@@ -8,7 +8,7 @@ import {
   Setting,
 } from "obsidian";
 import type ClaudeCodePlugin from "../main";
-import type { ContentBlock, Diff, ImagePromptContent, SendMessageOptions } from "../acp-core";
+import type { ContentBlock, Diff, PromptContent, SendMessageOptions } from "../acp-core";
 import type {
   ToolCallData,
   ToolCallUpdateData,
@@ -223,17 +223,47 @@ export class ChatView extends ItemView {
       }
     });
 
-    // Handle paste (images from clipboard)
+    // Handle paste (images and vault files from clipboard)
     this.textarea.addEventListener("paste", (e) => {
       const items = e.clipboardData?.items;
       if (!items) return;
 
+      // Check for pasted images
       for (const item of Array.from(items)) {
         if (item.type.startsWith("image/")) {
           e.preventDefault();
           const blob = item.getAsFile();
           if (blob) void this.addPastedImage(blob, item.type);
           return;
+        }
+      }
+
+      // Check for file paths in pasted text
+      const pastedText = e.clipboardData?.getData("text/plain")?.trim();
+      if (pastedText) {
+        // Check vault file first
+        const abstractFile = this.app.vault.getAbstractFileByPath(pastedText);
+        if (abstractFile instanceof TFile) {
+          e.preventDefault();
+          this.addFile(abstractFile);
+          return;
+        }
+
+        // Check external absolute path (starts with / on macOS/Linux or drive letter on Windows)
+        if (
+          (pastedText.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(pastedText)) &&
+          this.selectionChips
+        ) {
+          try {
+            const fs = require("fs") as typeof import("fs");
+            if (fs.existsSync(pastedText) && fs.statSync(pastedText).isFile()) {
+              e.preventDefault();
+              this.addExternalFile(pastedText);
+              return;
+            }
+          } catch {
+            // Not a valid path, let default paste handle it
+          }
         }
       }
     });
@@ -442,7 +472,7 @@ export class ChatView extends ItemView {
 
     try {
       // Build additional content (pasted images)
-      const additionalContent: ImagePromptContent[] = [];
+      const additionalContent: PromptContent[] = [];
       if (this.selectionChips) {
         for (const img of this.selectionChips.getAllImages()) {
           additionalContent.push({
@@ -1547,13 +1577,16 @@ For usage information, check [console.anthropic.com](https://console.anthropic.c
         const id = parseInt(markerMatch[1], 10);
         const badge = this.inputMirror.createSpan({ cls: "marker-badge" });
         badge.textContent = `@${id}`;
-        // Show filename or image info on hover
+        // Show filename, image info, or external path on hover
         const selection = this.selectionChips?.getSelection(id);
         const image = this.selectionChips?.getImage(id);
+        const extFile = this.selectionChips?.getExternalFile(id);
         if (selection) {
           badge.setAttribute("title", selection.file.path);
         } else if (image) {
           badge.setAttribute("title", image.name);
+        } else if (extFile) {
+          badge.setAttribute("title", extFile.absolutePath);
         }
       } else {
         this.inputMirror.appendChild(document.createTextNode(part));
@@ -1685,6 +1718,32 @@ For usage information, check [console.anthropic.com](https://console.anthropic.c
 
     // Add chip and get ID
     const id = this.selectionChips.addImage(base64, mimeType);
+
+    // Insert @N marker at cursor position
+    const cursorPos = this.textarea.selectionStart ?? this.textarea.value.length;
+    const before = this.textarea.value.slice(0, cursorPos);
+    const after = this.textarea.value.slice(cursorPos);
+
+    const needsSpaceBefore = before.length > 0 && !before.endsWith(" ") && !before.endsWith("\n");
+    const needsSpaceAfter = after.length > 0 && !after.startsWith(" ") && !after.startsWith("\n");
+
+    const marker = `${needsSpaceBefore ? " " : ""}\`@${id}\`${needsSpaceAfter ? " " : ""}`;
+
+    this.textarea.value = before + marker + after;
+
+    const newPos = cursorPos + marker.length;
+    this.textarea.setSelectionRange(newPos, newPos);
+    this.textarea.focus();
+    this.textarea.dispatchEvent(new Event("input"));
+  }
+
+  /**
+   * Add an external file (from outside vault) as a chip
+   */
+  private addExternalFile(absolutePath: string): void {
+    if (!this.selectionChips) return;
+
+    const id = this.selectionChips.addExternalFile(absolutePath);
 
     // Insert @N marker at cursor position
     const cursorPos = this.textarea.selectionStart ?? this.textarea.value.length;

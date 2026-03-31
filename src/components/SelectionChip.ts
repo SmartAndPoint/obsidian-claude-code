@@ -23,10 +23,17 @@ export interface ImageAttachment {
   name: string; // Display name
 }
 
+export interface ExternalFileAttachment {
+  id: number;
+  absolutePath: string; // Full filesystem path
+  name: string; // Display name (filename)
+}
+
 export class SelectionChipsContainer {
   private container: HTMLElement;
   private selections: Map<number, FileSelection> = new Map();
   private images: Map<number, ImageAttachment> = new Map();
+  private externalFiles: Map<number, ExternalFileAttachment> = new Map();
   private nextId: number = 1;
   private onRemove: (id: number) => void;
 
@@ -114,11 +121,42 @@ export class SelectionChipsContainer {
   }
 
   /**
+   * Add an external file (from outside vault) and return its ID
+   */
+  addExternalFile(absolutePath: string): number {
+    const id = this.nextId++;
+    const name = absolutePath.split("/").pop() ?? absolutePath;
+
+    const extFile: ExternalFileAttachment = { id, absolutePath, name };
+
+    this.externalFiles.set(id, extFile);
+    this.renderExternalFileChip(extFile);
+    this.updateVisibility();
+
+    return id;
+  }
+
+  /**
+   * Get external file by ID
+   */
+  getExternalFile(id: number): ExternalFileAttachment | undefined {
+    return this.externalFiles.get(id);
+  }
+
+  /**
+   * Get all external files
+   */
+  getAllExternalFiles(): ExternalFileAttachment[] {
+    return Array.from(this.externalFiles.values());
+  }
+
+  /**
    * Remove a selection by ID (actually delete it)
    */
   removeSelection(id: number): void {
     this.selections.delete(id);
     this.images.delete(id);
+    this.externalFiles.delete(id);
     const chipEl = this.container.querySelector(`[data-selection-id="${id}"]`);
     if (chipEl) {
       chipEl.remove();
@@ -166,6 +204,13 @@ export class SelectionChipsContainer {
         this.hideChip(id);
       }
     }
+    for (const [id] of this.externalFiles) {
+      if (visibleIds.has(id)) {
+        this.showChip(id);
+      } else {
+        this.hideChip(id);
+      }
+    }
   }
 
   /**
@@ -188,6 +233,7 @@ export class SelectionChipsContainer {
   clear(): void {
     this.selections.clear();
     this.images.clear();
+    this.externalFiles.clear();
     this.container.empty();
     this.nextId = 1;
     this.updateVisibility();
@@ -217,6 +263,12 @@ export class SelectionChipsContainer {
         }
       }
 
+      // External file - return absolute path
+      const extFile = this.externalFiles.get(id);
+      if (extFile) {
+        return extFile.absolutePath;
+      }
+
       return match; // Keep original if not found
     });
   }
@@ -241,6 +293,12 @@ export class SelectionChipsContainer {
         } else {
           return `[[${selection.file.path}]] (lines ${selection.startLine}-${selection.endLine})`;
         }
+      }
+
+      // External file - show filename
+      const extFile = this.externalFiles.get(id);
+      if (extFile) {
+        return extFile.name;
       }
 
       return match; // Keep original if not found
@@ -286,6 +344,37 @@ export class SelectionChipsContainer {
       e.stopPropagation();
       this.removeSelection(selection.id);
       this.onRemove(selection.id);
+    });
+  }
+
+  private renderExternalFileChip(extFile: ExternalFileAttachment): void {
+    const chip = this.container.createDiv({
+      cls: "selection-chip",
+      attr: { "data-selection-id": String(extFile.id) },
+    });
+
+    // Icon
+    const icon = chip.createSpan({ cls: "selection-chip-icon" });
+    icon.textContent = "📂";
+
+    // ID badge
+    const badge = chip.createSpan({ cls: "selection-chip-badge" });
+    badge.textContent = `@${extFile.id}`;
+
+    // Info
+    const info = chip.createSpan({ cls: "selection-chip-info" });
+    info.textContent = extFile.name;
+
+    // Tooltip with full path
+    chip.setAttribute("title", extFile.absolutePath);
+
+    // Remove button
+    const removeBtn = chip.createSpan({ cls: "selection-chip-remove" });
+    removeBtn.textContent = "✕";
+    removeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.removeSelection(extFile.id);
+      this.onRemove(extFile.id);
     });
   }
 
