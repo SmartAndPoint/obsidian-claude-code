@@ -238,6 +238,38 @@ export class ChatView extends ItemView {
         }
       }
 
+      // Check for files from OS clipboard (Finder/Explorer copy)
+      // Use Electron clipboard API to read file paths on macOS
+      if (this.selectionChips) {
+        try {
+          // On macOS, resolve file path from clipboard via AppleScript
+          // clipboard.read("public.file-url") returns file reference IDs, not real paths
+          const { execSync } = require("child_process") as typeof import("child_process");
+          const result = execSync("osascript -e 'POSIX path of (the clipboard as «class furl»)'", {
+            encoding: "utf-8",
+            timeout: 2000,
+          }).trim();
+          if (result && result.startsWith("/")) {
+            const filePath = result;
+            e.preventDefault();
+            // Check if it's a vault file
+            const vaultPath = (this.app.vault.adapter as unknown as { basePath: string }).basePath;
+            if (filePath.startsWith(vaultPath + "/")) {
+              const relativePath = filePath.slice(vaultPath.length + 1);
+              const vaultFile = this.app.vault.getAbstractFileByPath(relativePath);
+              if (vaultFile instanceof TFile) {
+                this.addFile(vaultFile);
+                return;
+              }
+            }
+            this.addExternalFile(filePath);
+            return;
+          }
+        } catch {
+          // Electron clipboard not available, fall through
+        }
+      }
+
       // Check for file paths in pasted text
       const pastedText = e.clipboardData?.getData("text/plain")?.trim();
       if (pastedText) {
