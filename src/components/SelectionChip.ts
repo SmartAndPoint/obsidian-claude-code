@@ -16,9 +16,17 @@ export interface FileSelection {
   isFullFile?: boolean; // True if this is a dropped file (not a selection)
 }
 
+export interface ImageAttachment {
+  id: number;
+  data: string; // base64-encoded
+  mimeType: string; // "image/png", "image/jpeg", etc.
+  name: string; // Display name
+}
+
 export class SelectionChipsContainer {
   private container: HTMLElement;
   private selections: Map<number, FileSelection> = new Map();
+  private images: Map<number, ImageAttachment> = new Map();
   private nextId: number = 1;
   private onRemove: (id: number) => void;
 
@@ -71,10 +79,46 @@ export class SelectionChipsContainer {
   }
 
   /**
+   * Add a pasted image and return its ID
+   */
+  addImage(data: string, mimeType: string): number {
+    const id = this.nextId++;
+    const imageNum = this.images.size + 1;
+
+    const image: ImageAttachment = {
+      id,
+      data,
+      mimeType,
+      name: `Pasted image ${imageNum}`,
+    };
+
+    this.images.set(id, image);
+    this.renderImageChip(image);
+    this.updateVisibility();
+
+    return id;
+  }
+
+  /**
+   * Get image by ID
+   */
+  getImage(id: number): ImageAttachment | undefined {
+    return this.images.get(id);
+  }
+
+  /**
+   * Get all images
+   */
+  getAllImages(): ImageAttachment[] {
+    return Array.from(this.images.values());
+  }
+
+  /**
    * Remove a selection by ID (actually delete it)
    */
   removeSelection(id: number): void {
     this.selections.delete(id);
+    this.images.delete(id);
     const chipEl = this.container.querySelector(`[data-selection-id="${id}"]`);
     if (chipEl) {
       chipEl.remove();
@@ -115,6 +159,13 @@ export class SelectionChipsContainer {
         this.hideChip(id);
       }
     }
+    for (const [id] of this.images) {
+      if (visibleIds.has(id)) {
+        this.showChip(id);
+      } else {
+        this.hideChip(id);
+      }
+    }
   }
 
   /**
@@ -136,6 +187,7 @@ export class SelectionChipsContainer {
    */
   clear(): void {
     this.selections.clear();
+    this.images.clear();
     this.container.empty();
     this.nextId = 1;
     this.updateVisibility();
@@ -234,6 +286,40 @@ export class SelectionChipsContainer {
       e.stopPropagation();
       this.removeSelection(selection.id);
       this.onRemove(selection.id);
+    });
+  }
+
+  private renderImageChip(image: ImageAttachment): void {
+    const chip = this.container.createDiv({
+      cls: "selection-chip",
+      attr: { "data-selection-id": String(image.id) },
+    });
+
+    // Icon
+    const icon = chip.createSpan({ cls: "selection-chip-icon" });
+    icon.textContent = "🖼️";
+
+    // ID badge
+    const badge = chip.createSpan({ cls: "selection-chip-badge" });
+    badge.textContent = `@${image.id}`;
+
+    // Info
+    const info = chip.createSpan({ cls: "selection-chip-info" });
+    info.textContent = image.name;
+
+    // Tooltip
+    chip.setAttribute(
+      "title",
+      `${image.mimeType} (${Math.round((image.data.length * 0.75) / 1024)}KB)`
+    );
+
+    // Remove button
+    const removeBtn = chip.createSpan({ cls: "selection-chip-remove" });
+    removeBtn.textContent = "✕";
+    removeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.removeSelection(image.id);
+      this.onRemove(image.id);
     });
   }
 

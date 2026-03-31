@@ -1,5 +1,6 @@
 import { Plugin, Notice, WorkspaceLeaf } from "obsidian";
 import { ObsidianAcpClient, AcpClientEvents } from "./acpClient";
+import type { SendMessageOptions } from "./acp-core";
 import { ChatView, CHAT_VIEW_TYPE } from "./views/ChatView";
 
 export default class ClaudeCodePlugin extends Plugin {
@@ -257,7 +258,7 @@ export default class ClaudeCodePlugin extends Plugin {
     }
   }
 
-  async sendMessage(text: string): Promise<void> {
+  async sendMessage(text: string, options?: SendMessageOptions): Promise<void> {
     if (!this.acpClient?.isConnected()) {
       throw new Error("Not connected");
     }
@@ -265,7 +266,7 @@ export default class ClaudeCodePlugin extends Plugin {
     this.getChatView()?.updateStatus("thinking");
 
     try {
-      await this.acpClient.sendMessage(text);
+      await this.acpClient.sendMessage(text, options);
       // Note: completeAssistantMessage is now called via onMessageComplete event
     } catch (error) {
       this.getChatView()?.updateStatus("connected");

@@ -8,7 +8,7 @@ import {
   Setting,
 } from "obsidian";
 import type ClaudeCodePlugin from "../main";
-import type { ContentBlock, Diff } from "../acp-core";
+import type { ContentBlock, Diff, ImagePromptContent, SendMessageOptions } from "../acp-core";
 import type {
   ToolCallData,
   ToolCallUpdateData,
@@ -223,6 +223,21 @@ export class ChatView extends ItemView {
       }
     });
 
+    // Handle paste (images from clipboard)
+    this.textarea.addEventListener("paste", (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith("image/")) {
+          e.preventDefault();
+          const blob = item.getAsFile();
+          if (blob) void this.addPastedImage(blob, item.type);
+          return;
+        }
+      }
+    });
+
     // Auto-resize textarea and sync chips
     this.textarea.addEventListener("input", () => {
       setCssProps(this.textarea, { "--chat-input-height": "auto" });
@@ -426,7 +441,21 @@ export class ChatView extends ItemView {
     }
 
     try {
-      await this.plugin.sendMessage(resolvedText);
+      // Build additional content (pasted images)
+      const additionalContent: ImagePromptContent[] = [];
+      if (this.selectionChips) {
+        for (const img of this.selectionChips.getAllImages()) {
+          additionalContent.push({
+            type: "image",
+            data: img.data,
+            mimeType: img.mimeType,
+          });
+        }
+      }
+
+      const options: SendMessageOptions | undefined =
+        additionalContent.length > 0 ? { additionalContent } : undefined;
+      await this.plugin.sendMessage(resolvedText, options);
     } catch (error) {
       this.addMessage({
         role: "assistant",
@@ -1518,10 +1547,13 @@ For usage information, check [console.anthropic.com](https://console.anthropic.c
         const id = parseInt(markerMatch[1], 10);
         const badge = this.inputMirror.createSpan({ cls: "marker-badge" });
         badge.textContent = `@${id}`;
-        // Show filename on hover
+        // Show filename or image info on hover
         const selection = this.selectionChips?.getSelection(id);
+        const image = this.selectionChips?.getImage(id);
         if (selection) {
           badge.setAttribute("title", selection.file.path);
+        } else if (image) {
+          badge.setAttribute("title", image.name);
         }
       } else {
         this.inputMirror.appendChild(document.createTextNode(part));
@@ -1633,6 +1665,42 @@ For usage information, check [console.anthropic.com](https://console.anthropic.c
     this.textarea.focus();
 
     // Trigger resize
+    this.textarea.dispatchEvent(new Event("input"));
+  }
+
+  /**
+   * Add a pasted image from clipboard
+   */
+  private async addPastedImage(blob: File, mimeType: string): Promise<void> {
+    if (!this.selectionChips) return;
+
+    // Convert blob to base64
+    const buffer = await blob.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    const base64 = btoa(binary);
+
+    // Add chip and get ID
+    const id = this.selectionChips.addImage(base64, mimeType);
+
+    // Insert @N marker at cursor position
+    const cursorPos = this.textarea.selectionStart ?? this.textarea.value.length;
+    const before = this.textarea.value.slice(0, cursorPos);
+    const after = this.textarea.value.slice(cursorPos);
+
+    const needsSpaceBefore = before.length > 0 && !before.endsWith(" ") && !before.endsWith("\n");
+    const needsSpaceAfter = after.length > 0 && !after.startsWith(" ") && !after.startsWith("\n");
+
+    const marker = `${needsSpaceBefore ? " " : ""}\`@${id}\`${needsSpaceAfter ? " " : ""}`;
+
+    this.textarea.value = before + marker + after;
+
+    const newPos = cursorPos + marker.length;
+    this.textarea.setSelectionRange(newPos, newPos);
+    this.textarea.focus();
     this.textarea.dispatchEvent(new Event("input"));
   }
 

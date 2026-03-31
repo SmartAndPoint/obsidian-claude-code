@@ -26,6 +26,7 @@ import {
   type AgentCapabilities,
   type ListSessionsResult,
   type SessionListItem,
+  type SendMessageOptions,
 } from "./acp-core";
 import { ensureBinaryAvailable, ProgressCallback } from "./binaryManager";
 
@@ -371,13 +372,13 @@ export class ObsidianAcpClient {
     }
   }
 
-  async sendMessage(text: string): Promise<void> {
+  async sendMessage(text: string, options?: SendMessageOptions): Promise<void> {
     if (!this.client || !this.currentSessionId) {
       throw new Error("Not connected");
     }
 
     // Use the streaming interface and consume all events
-    for await (const event of this.client.sendMessage(text)) {
+    for await (const event of this.client.sendMessage(text, options)) {
       this.handleStreamEvent(event);
     }
   }
