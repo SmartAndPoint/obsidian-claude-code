@@ -371,7 +371,7 @@ export class FileSuggest {
     const value = this.inputEl.value;
     const cursorPos = this.inputEl.selectionStart ?? 0;
 
-    // Replace [[ + query with [[filename]]
+    // Remove [[ + query from textarea (parent will insert @N via callback)
     const before = value.slice(0, this.triggerStart);
     let after = value.slice(cursorPos);
 
@@ -380,20 +380,17 @@ export class FileSuggest {
       after = after.slice(2);
     }
 
-    const newValue = `${before}[[${selected.path}]]${after}`;
+    this.inputEl.value = before + after;
 
-    this.inputEl.value = newValue;
-
-    // Move cursor after ]]
-    const newCursorPos = this.triggerStart + selected.path.length + 4;
-    this.inputEl.setSelectionRange(newCursorPos, newCursorPos);
+    // Position cursor where [[ was
+    this.inputEl.setSelectionRange(this.triggerStart, this.triggerStart);
 
     // Trigger input event for textarea auto-resize
     this.inputEl.dispatchEvent(new Event("input"));
 
     this.close();
 
-    // Notify parent
+    // Notify parent — parent will insert @N marker and create chip
     this.onSelect(selected.path);
   }
 

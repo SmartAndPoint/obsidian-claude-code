@@ -122,6 +122,9 @@ export class ChatView extends ItemView {
   // Selection chips for Cmd+L
   private selectionChips: SelectionChipsContainer | null = null;
 
+  // Mirror div for styled @N badges
+  private inputMirror: HTMLElement | null = null;
+
   // Session management
   private sessionService: VaultSessionService;
   private currentVaultSessionId: string | null = null;
@@ -200,10 +203,14 @@ export class ChatView extends ItemView {
     // Input row (textarea + send button)
     const inputRow = this.inputContainer.createDiv({ cls: "chat-input-row" });
 
-    this.textarea = inputRow.createEl("textarea", {
+    const inputWrapper = inputRow.createDiv({ cls: "chat-input-wrapper" });
+
+    this.textarea = inputWrapper.createEl("textarea", {
       cls: "chat-input",
       attr: { placeholder: "Type a message..." },
     });
+
+    this.inputMirror = inputWrapper.createDiv({ cls: "chat-input-mirror" });
 
     this.textarea.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
@@ -225,6 +232,14 @@ export class ChatView extends ItemView {
 
       // Sync chips with text - remove orphaned chips
       this.syncChipsWithText();
+
+      // Sync mirror overlay for styled @N badges
+      this.syncInputMirror();
+
+      // Sync mirror scroll position
+      if (this.inputMirror) {
+        this.inputMirror.scrollTop = this.textarea.scrollTop;
+      }
     });
 
     this.sendButton = inputRow.createEl("button", { cls: "chat-send-btn" });
@@ -233,8 +248,10 @@ export class ChatView extends ItemView {
 
     // File suggestion for [[ syntax
     this.fileSuggest = new FileSuggest(this.app, this.inputContainer, this.textarea, (path) => {
-      // Optional: could show a notification or log
-      console.debug(`[FileSuggest] Selected: ${path}`);
+      const file = this.app.vault.getAbstractFileByPath(path);
+      if (file instanceof TFile) {
+        this.addFile(file);
+      }
     });
 
     // Command suggestion for / syntax (slash commands)
@@ -354,8 +371,9 @@ export class ChatView extends ItemView {
       timestamp: new Date(),
     });
 
-    // Clear input and selection chips
+    // Clear input, mirror, and selection chips
     this.textarea.value = "";
+    this.inputMirror?.empty();
     setCssProps(this.textarea, { "--chat-input-height": "auto" });
 
     // Reset streaming state
@@ -1475,6 +1493,40 @@ For usage information, check [console.anthropic.com](https://console.anthropic.c
 
     // Sync chip visibility
     this.selectionChips.syncVisibility(visibleIds);
+  }
+
+  /**
+   * Sync mirror div with textarea content, rendering `@N` markers as styled badges
+   */
+  private syncInputMirror(): void {
+    if (!this.inputMirror) return;
+
+    const text = this.textarea.value;
+
+    if (!text) {
+      this.inputMirror.empty();
+      return;
+    }
+
+    // Build mirror content: replace `@N` with styled badge spans
+    this.inputMirror.empty();
+    const parts = text.split(/(`@\d+`)/g);
+
+    for (const part of parts) {
+      const markerMatch = part.match(/^`@(\d+)`$/);
+      if (markerMatch) {
+        const id = parseInt(markerMatch[1], 10);
+        const badge = this.inputMirror.createSpan({ cls: "marker-badge" });
+        badge.textContent = `@${id}`;
+        // Show filename on hover
+        const selection = this.selectionChips?.getSelection(id);
+        if (selection) {
+          badge.setAttribute("title", selection.file.path);
+        }
+      } else {
+        this.inputMirror.appendChild(document.createTextNode(part));
+      }
+    }
   }
 
   // ===== Drag & Drop Methods =====

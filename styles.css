@@ -386,6 +386,54 @@
   border-color: var(--interactive-accent);
 }
 
+/* Overlay mirror for styled @N badges inside input */
+.chat-input-wrapper {
+  position: relative;
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.chat-input-wrapper .chat-input {
+  width: 100%;
+  color: transparent;
+  caret-color: var(--text-normal);
+}
+
+.chat-input-wrapper .chat-input::placeholder {
+  color: var(--text-faint);
+}
+
+.chat-input-mirror {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow: hidden;
+  pointer-events: none;
+  color: var(--text-normal);
+}
+
+.chat-input-mirror .marker-badge {
+  display: inline-block;
+  padding: 0 5px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  vertical-align: baseline;
+  line-height: 1.4;
+  pointer-events: auto;
+  cursor: default;
+}
+
 .chat-send-btn {
   padding: 10px;
   border-radius: 8px;
