@@ -7,6 +7,8 @@ import {
   Modal,
   Setting,
 } from "obsidian";
+import { execSync } from "node:child_process";
+import { existsSync, statSync } from "node:fs";
 import type ClaudeCodePlugin from "../main";
 import type { ContentBlock, Diff, PromptContent, SendMessageOptions } from "../acp-core";
 import type {
@@ -244,7 +246,6 @@ export class ChatView extends ItemView {
         try {
           // On macOS, resolve file path from clipboard via AppleScript
           // clipboard.read("public.file-url") returns file reference IDs, not real paths
-          const { execSync } = require("child_process") as typeof import("child_process");
           const result = execSync("osascript -e 'POSIX path of (the clipboard as «class furl»)'", {
             encoding: "utf-8",
             timeout: 2000,
@@ -287,8 +288,7 @@ export class ChatView extends ItemView {
           this.selectionChips
         ) {
           try {
-            const fs = require("fs") as typeof import("fs");
-            if (fs.existsSync(pastedText) && fs.statSync(pastedText).isFile()) {
+            if (existsSync(pastedText) && statSync(pastedText).isFile()) {
               e.preventDefault();
               this.addExternalFile(pastedText);
               return;
