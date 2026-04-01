@@ -36,11 +36,24 @@ You need **one** of the following:
 
 ## Installation
 
-### From GitHub Releases (Recommended)
+### Via BRAT (Recommended)
 
-1. Download the [latest release](https://github.com/SmartAndPoint/obsidian-claude-code/releases/latest)
-2. Extract the archive to: `YOUR_VAULT/.obsidian/plugins/obsidian-claude-code/`
-3. In Obsidian: Settings → Community Plugins → Enable "Claude Code Integration"
+[BRAT](https://github.com/TfTHacker/obsidian42-brat) installs the plugin directly from GitHub and keeps it updated automatically.
+
+1. Install **BRAT** from Obsidian: Settings → Community plugins → Browse → search "BRAT" → Install → Enable
+2. Open BRAT settings: Settings → BRAT → **Add Beta Plugin**
+3. Paste the repository URL: `SmartAndPoint/obsidian-claude-code`
+4. Click **Add Plugin** — BRAT downloads and installs everything automatically
+5. Enable the plugin: Settings → Community plugins → Enable "Claude Code Integration"
+
+> **Auto-updates:** BRAT checks for new releases on Obsidian startup. You can also manually check via Command Palette → "BRAT: Check for updates to all beta plugins".
+
+### From GitHub Releases
+
+1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/SmartAndPoint/obsidian-claude-code/releases/latest)
+2. Create folder: `YOUR_VAULT/.obsidian/plugins/obsidian-claude-code/`
+3. Copy the 3 files into that folder
+4. In Obsidian: Settings → Community plugins → Enable "Claude Code Integration"
 
 ### From Source
 
