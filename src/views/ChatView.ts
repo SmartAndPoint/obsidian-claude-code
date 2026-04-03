@@ -449,7 +449,11 @@ export class ChatView extends ItemView {
 
     // Resolve @N selection markers to full paths (for agent)
     if (this.selectionChips) {
-      resolvedText = this.selectionChips.resolveMarkers(resolvedText, vaultPath);
+      resolvedText = this.selectionChips.resolveMarkers(
+        resolvedText,
+        vaultPath,
+        this.currentVaultSessionId ?? undefined
+      );
     }
 
     // Clear chips after sending

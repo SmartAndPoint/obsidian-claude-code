@@ -6,6 +6,7 @@
  */
 
 import { TFile } from "obsidian";
+import { writeFileSync, mkdirSync } from "node:fs";
 
 export interface FileSelection {
   id: number;
@@ -242,7 +243,7 @@ export class SelectionChipsContainer {
   /**
    * Resolve `@N` markers in text to full file paths (for agent)
    */
-  resolveMarkers(text: string, vaultPath: string): string {
+  resolveMarkers(text: string, vaultPath: string, sessionId?: string): string {
     return text.replace(/`@(\d+)`/g, (match, idStr) => {
       const id = parseInt(idStr, 10);
       const selection = this.selections.get(id);
@@ -267,6 +268,22 @@ export class SelectionChipsContainer {
       const extFile = this.externalFiles.get(id);
       if (extFile) {
         return extFile.absolutePath;
+      }
+
+      // Image - save to vault and return path so agent can read it without permission
+      const image = this.images.get(id);
+      if (image) {
+        try {
+          const ext = image.mimeType.split("/")[1] || "png";
+          const sessionPrefix = sessionId ? `${sessionId}-` : "";
+          const imagesDir = `${vaultPath}/claude-code/images`;
+          mkdirSync(imagesDir, { recursive: true });
+          const imgPath = `${imagesDir}/${sessionPrefix}paste-${id}-${Date.now()}.${ext}`;
+          writeFileSync(imgPath, Buffer.from(image.data, "base64"));
+          return imgPath;
+        } catch {
+          return `[${image.name}]`;
+        }
       }
 
       return match; // Keep original if not found
@@ -299,6 +316,12 @@ export class SelectionChipsContainer {
       const extFile = this.externalFiles.get(id);
       if (extFile) {
         return extFile.name;
+      }
+
+      // Image - show name
+      const image = this.images.get(id);
+      if (image) {
+        return `[${image.name}]`;
       }
 
       return match; // Keep original if not found
