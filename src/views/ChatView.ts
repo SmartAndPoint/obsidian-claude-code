@@ -124,9 +124,6 @@ export class ChatView extends ItemView {
   // Selection chips for Cmd+L
   private selectionChips: SelectionChipsContainer | null = null;
 
-  // Mirror div for styled @N badges
-  private inputMirror: HTMLElement | null = null;
-
   // Session management
   private sessionService: VaultSessionService;
   private currentVaultSessionId: string | null = null;
@@ -205,14 +202,10 @@ export class ChatView extends ItemView {
     // Input row (textarea + send button)
     const inputRow = this.inputContainer.createDiv({ cls: "chat-input-row" });
 
-    const inputWrapper = inputRow.createDiv({ cls: "chat-input-wrapper" });
-
-    this.textarea = inputWrapper.createEl("textarea", {
+    this.textarea = inputRow.createEl("textarea", {
       cls: "chat-input",
       attr: { placeholder: "Type a message..." },
     });
-
-    this.inputMirror = inputWrapper.createDiv({ cls: "chat-input-mirror" });
 
     this.textarea.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
@@ -309,14 +302,6 @@ export class ChatView extends ItemView {
 
       // Sync chips with text - remove orphaned chips
       this.syncChipsWithText();
-
-      // Sync mirror overlay for styled @N badges
-      this.syncInputMirror();
-
-      // Sync mirror scroll position
-      if (this.inputMirror) {
-        this.inputMirror.scrollTop = this.textarea.scrollTop;
-      }
     });
 
     this.sendButton = inputRow.createEl("button", { cls: "chat-send-btn" });
@@ -448,9 +433,8 @@ export class ChatView extends ItemView {
       timestamp: new Date(),
     });
 
-    // Clear input, mirror, and selection chips
+    // Clear input and selection chips
     this.textarea.value = "";
-    this.inputMirror?.empty();
     setCssProps(this.textarea, { "--chat-input-height": "auto" });
 
     // Reset streaming state
@@ -1586,46 +1570,6 @@ For usage information, check [console.anthropic.com](https://console.anthropic.c
     this.selectionChips.syncVisibility(visibleIds);
   }
 
-  /**
-   * Sync mirror div with textarea content, rendering `@N` markers as styled badges
-   */
-  private syncInputMirror(): void {
-    if (!this.inputMirror) return;
-
-    const text = this.textarea.value;
-
-    if (!text) {
-      this.inputMirror.empty();
-      return;
-    }
-
-    // Build mirror content: replace `@N` with styled badge spans
-    this.inputMirror.empty();
-    const parts = text.split(/(`@\d+`)/g);
-
-    for (const part of parts) {
-      const markerMatch = part.match(/^`@(\d+)`$/);
-      if (markerMatch) {
-        const id = parseInt(markerMatch[1], 10);
-        const badge = this.inputMirror.createSpan({ cls: "marker-badge" });
-        badge.textContent = `@${id}`;
-        // Show filename, image info, or external path on hover
-        const selection = this.selectionChips?.getSelection(id);
-        const image = this.selectionChips?.getImage(id);
-        const extFile = this.selectionChips?.getExternalFile(id);
-        if (selection) {
-          badge.setAttribute("title", selection.file.path);
-        } else if (image) {
-          badge.setAttribute("title", image.name);
-        } else if (extFile) {
-          badge.setAttribute("title", extFile.absolutePath);
-        }
-      } else {
-        this.inputMirror.appendChild(document.createTextNode(part));
-      }
-    }
-  }
-
   // ===== Drag & Drop Methods =====
 
   /**
@@ -2015,15 +1959,18 @@ For usage information, check [console.anthropic.com](https://console.anthropic.c
           content: `✓ Session resumed. Claude remembers this conversation.`,
           timestamp: new Date(),
         });
-      } catch (error) {
-        console.warn(`[ChatView] Failed to resume session: ${(error as Error).message}`);
-        this.updateSessionState("history-only");
+      } catch {
+        // connectWithSession threw — connect fresh, link new session
+        console.warn("[ChatView] Session resume failed, connecting fresh");
+        await this.plugin.connect();
+        const newId = this.plugin.getSessionId();
+        if (newId) await this.linkClaudeSession(newId);
+        this.updateSessionState("live");
         this.addMessage({
           role: "assistant",
-          content: `Session loaded: **${session.title}** (${session.messageCount} messages)\n\n⚠️ Claude doesn't remember this conversation. Use the banner above to continue with context.`,
+          content: `Session loaded: **${session.title}** (${session.messageCount} messages)\n\nConnected to a new session. History shown for context.`,
           timestamp: new Date(),
         });
-        return; // Don't auto-connect, let user decide
       }
     } else {
       // No Claude session ID - this is a fresh session or history only

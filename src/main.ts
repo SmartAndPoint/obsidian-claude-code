@@ -73,8 +73,14 @@ export default class ClaudeCodePlugin extends Plugin {
       // Connection lifecycle
       onError: (error) => {
         console.error("[ACP Error]", error);
-        new Notice(`Error: ${error.message}`);
-        this.getChatView()?.updateStatus("disconnected");
+        // Check for internal error after session resume (expired session)
+        const errorCode = (error as unknown as { code?: number }).code;
+        if (errorCode === -32603) {
+          void this.reconnectFresh();
+        } else {
+          new Notice(`Error: ${error.message}`);
+          this.getChatView()?.updateStatus("disconnected");
+        }
       },
       onConnected: () => {
         console.debug("[ACP] Connected");
@@ -218,6 +224,29 @@ export default class ClaudeCodePlugin extends Plugin {
   }
 
   /**
+   * Reconnect with a fresh session when the current one expired (-32603)
+   */
+  private async reconnectFresh(): Promise<void> {
+    try {
+      await this.disconnect();
+      await this.connect();
+      const chatView = this.getChatView();
+      if (chatView) {
+        const newSessionId = this.getSessionId();
+        if (newSessionId) {
+          await chatView.linkClaudeSession(newSessionId);
+        }
+        chatView.updateStatus("connected");
+      }
+      new Notice("Session expired. Reconnected to new session. Please resend your message.", 5000);
+    } catch (error) {
+      console.error("[Plugin] reconnectFresh failed:", error);
+      new Notice(`Reconnect failed: ${(error as Error).message}`);
+      this.getChatView()?.updateStatus("disconnected");
+    }
+  }
+
+  /**
    * Connect and resume an existing Claude session
    * @param claudeSessionId - The Claude session ID to resume
    */
@@ -240,13 +269,14 @@ export default class ClaudeCodePlugin extends Plugin {
         }
       });
 
-      // Try to resume the session
-      if (this.acpClient?.supportsSessionResume()) {
-        await this.acpClient.resumeSession(claudeSessionId);
-        console.debug(`[Plugin] Resumed Claude session: ${claudeSessionId}`);
-      } else if (this.acpClient?.supportsSessionLoad()) {
+      // Try to load/resume the session
+      // Prefer loadSession (stable) over resumeSession (UNSTABLE)
+      if (this.acpClient?.supportsSessionLoad()) {
         await this.acpClient.loadSession(claudeSessionId);
         console.debug(`[Plugin] Loaded Claude session: ${claudeSessionId}`);
+      } else if (this.acpClient?.supportsSessionResume()) {
+        await this.acpClient.resumeSession(claudeSessionId);
+        console.debug(`[Plugin] Resumed Claude session: ${claudeSessionId}`);
       } else {
         console.warn("[Plugin] Session resume/load not supported by ACP");
         throw new Error("Session resume not supported");
