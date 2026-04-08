@@ -224,9 +224,46 @@ export class SdkAcpClient implements IAcpClient {
       // Import SDK and call query()
       const { query: sdkQuery } = await import("@anthropic-ai/claude-agent-sdk");
 
+      // Try with resume first, retry without if session not found on other machine
+      if (sdkOptions.resume) {
+        try {
+          this.currentQuery = sdkQuery({ prompt: text, options: sdkOptions });
+          for await (const msg of this.currentQuery) {
+            const events = this.convertSdkMessage(msg);
+            for (const event of events) {
+              yield event;
+            }
+            if ("session_id" in msg && msg.session_id) {
+              const newId = msg.session_id;
+              if (newId !== this.claudeSessionId) {
+                this.claudeSessionId = newId;
+                console.debug("[SdkAcpClient] Claude session ID:", newId);
+                this.config.onSessionUpdate?.({
+                  sessionUpdate: "session_id",
+                  sessionId: newId,
+                } as unknown as import("../interfaces").SessionUpdate);
+              }
+            }
+          }
+          this.currentQuery = null;
+          yield { type: "message_complete", stopReason: "end_turn" };
+          return;
+        } catch (resumeError) {
+          const errMsg = String(resumeError);
+          if (errMsg.includes("No conversation found") || errMsg.includes("exit")) {
+            console.warn("[SdkAcpClient] Resume failed, retrying without resume:", errMsg);
+            // Resume failed, will retry without resume below
+            delete sdkOptions.resume;
+            this.claudeSessionId = null;
+          } else {
+            throw resumeError;
+          }
+        }
+      }
+
+      // Fresh query (no resume, or resume failed)
       this.currentQuery = sdkQuery({ prompt: text, options: sdkOptions });
 
-      // Iterate SDK messages and convert to StreamEvent
       for await (const msg of this.currentQuery) {
         const events = this.convertSdkMessage(msg);
         for (const event of events) {
