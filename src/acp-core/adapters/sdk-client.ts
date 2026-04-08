@@ -234,14 +234,19 @@ export class SdkAcpClient implements IAcpClient {
               yield event;
             }
             if ("session_id" in msg && msg.session_id) {
-              const newId = msg.session_id;
-              if (newId !== this.claudeSessionId) {
-                this.claudeSessionId = newId;
-                console.debug("[SdkAcpClient] Claude session ID:", newId);
-                this.config.onSessionUpdate?.({
-                  sessionUpdate: "session_id",
-                  sessionId: newId,
-                } as unknown as import("../interfaces").SessionUpdate);
+              console.debug("[SdkAcpClient] msg type:", msg.type, "session_id:", msg.session_id);
+              // Only capture session_id from 'system' init or 'result' messages
+              // (other messages may have prompt IDs, not session IDs)
+              if (msg.type === "system" || msg.type === "result") {
+                const newId = msg.session_id;
+                if (newId !== this.claudeSessionId) {
+                  this.claudeSessionId = newId;
+                  console.debug("[SdkAcpClient] Claude session ID updated:", newId);
+                  this.config.onSessionUpdate?.({
+                    sessionUpdate: "session_id",
+                    sessionId: newId,
+                  } as unknown as import("../interfaces").SessionUpdate);
+                }
               }
             }
           }
@@ -270,17 +275,18 @@ export class SdkAcpClient implements IAcpClient {
           yield event;
         }
 
-        // Track Claude session ID -- may change on resume/fork
+        // Track Claude session ID -- only from system/result messages (not prompt IDs)
         if ("session_id" in msg && msg.session_id) {
-          const newId = msg.session_id;
-          if (newId !== this.claudeSessionId) {
-            this.claudeSessionId = newId;
-            console.debug("[SdkAcpClient] Claude session ID:", newId);
-            // Notify via session update so ChatView can persist it
-            this.config.onSessionUpdate?.({
-              sessionUpdate: "session_id",
-              sessionId: newId,
-            } as unknown as import("../interfaces").SessionUpdate);
+          if (msg.type === "system" || msg.type === "result") {
+            const newId = msg.session_id;
+            if (newId !== this.claudeSessionId) {
+              this.claudeSessionId = newId;
+              console.debug("[SdkAcpClient] Claude session ID updated:", newId);
+              this.config.onSessionUpdate?.({
+                sessionUpdate: "session_id",
+                sessionId: newId,
+              } as unknown as import("../interfaces").SessionUpdate);
+            }
           }
         }
       }
@@ -358,10 +364,6 @@ export class SdkAcpClient implements IAcpClient {
       }
 
       case "result": {
-        // Capture session ID from result
-        if (msg.session_id && !this.claudeSessionId) {
-          this.claudeSessionId = msg.session_id;
-        }
         if (msg.subtype !== "success") {
           const errorMsg =
             "errors" in msg ? (msg as { errors: string[] }).errors.join(", ") : "Unknown error";
@@ -371,9 +373,6 @@ export class SdkAcpClient implements IAcpClient {
       }
 
       case "system": {
-        if ("session_id" in msg && msg.session_id && !this.claudeSessionId) {
-          this.claudeSessionId = msg.session_id;
-        }
         if ("subtype" in msg && msg.subtype === "init") {
           console.debug("[SdkAcpClient] Init:", {
             model: (msg as unknown as { model?: string }).model,
