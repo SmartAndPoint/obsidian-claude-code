@@ -183,7 +183,7 @@ export class SdkAcpClient implements IAcpClient {
         cwd: this.cwd,
         pathToClaudeCodeExecutable: this.claudePath,
         includePartialMessages: true,
-        permissionMode: "default",
+        permissionMode: "acceptEdits",
       };
 
       // Resume existing session if we have a valid Claude UUID
@@ -201,6 +201,11 @@ export class SdkAcpClient implements IAcpClient {
           _opts: { signal: AbortSignal }
         ): Promise<PermissionResult> => {
           try {
+            console.warn(
+              "[SdkAcpClient] Permission request:",
+              toolName,
+              JSON.stringify(input).slice(0, 200)
+            );
             const result = await handler({
               toolCall: {
                 id: `tool-${Date.now()}`,
@@ -210,12 +215,14 @@ export class SdkAcpClient implements IAcpClient {
               },
               description: `${toolName}: ${JSON.stringify(input).slice(0, 100)}`,
             });
+            console.warn("[SdkAcpClient] Permission result:", result.granted);
             if (result.granted) {
               return { behavior: "allow" };
             } else {
               return { behavior: "deny", message: result.reason ?? "Denied by user" };
             }
-          } catch {
+          } catch (err) {
+            console.error("[SdkAcpClient] Permission handler error:", err);
             return { behavior: "deny", message: "Permission handler error" };
           }
         };
