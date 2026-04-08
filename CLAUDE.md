@@ -33,27 +33,27 @@ The plugin enables the full Claude Code agent experience directly in Obsidian, s
 │  │  │  ┌─────────────────────────────────────────────┐  │  │ │
 │  │  │  │            IAcpClient Interface             │  │  │ │
 │  │  │  └─────────────────────────────────────────────┘  │  │ │
-│  │  │  ┌─────────────────┐  ┌─────────────────────────┐ │  │ │
-│  │  │  │ NativeAcpClient │  │    ZedAcpAdapter       │ │  │ │
-│  │  │  └────────┬────────┘  └────────────────────────┘ │  │ │
-│  │  └───────────│───────────────────────────────────────┘  │ │
-│  └──────────────│──────────────────────────────────────────┘ │
-└─────────────────│───────────────────────────────────────────┘
-                  │ JSON-RPC over stdio
+│  │  │  ┌─────────────────┐  ┌─────────────┐ ┌──────────┐ │  │ │
+│  │  │  │ NativeAcpClient │  │ ZedAdapter  │ │SdkClient │ │  │ │
+│  │  │  └─────────────────┘  └─────────────┘ └────┬─────┘ │  │ │
+│  │  └────────────────────────────────────────────│───────┘  │ │
+│  └───────────────────────────────────────────────│──────────┘ │
+└──────────────────────────────────────────────────│───────────┘
+                  │ Claude Agent SDK (spawns CLI subprocess)
                   ▼
 ┌──────────────────────────────────────────────────────────────┐
-│                     claude-code-acp                          │
-│                (ACP Server / Claude Agent)                   │
-│           @zed-industries/claude-code-acp                    │
+│                     claude CLI                               │
+│           @anthropic-ai/claude-agent-sdk                     │
+│         (Works with Pro/Max subscriptions)                   │
 └──────────────────────────────────────────────────────────────┘
 ```
 
 ## Key Technologies
 
-- **ACP (Agent Client Protocol)** — Communication protocol between editors and AI agents
-- **acp-core** — Internal module with types and ACP client implementations
-- **claude-code-acp** — ACP server wrapping the Claude Code SDK
-- **@agentclientprotocol/sdk** — TypeScript SDK for creating ACP clients
+- **Claude Agent SDK** (`@anthropic-ai/claude-agent-sdk`) — Official SDK for spawning Claude Code CLI
+- **acp-core** — Internal module with types, DI factory, and client adapter implementations
+- **SdkAcpClient** — Default adapter using Claude Agent SDK (works with subscriptions)
+- **NativeAcpClient / ZedAcpAdapter** — Legacy ACP adapters (for API key users)
 - **Obsidian Plugin API** — API for creating Obsidian plugins
 
 ## Project Structure
@@ -133,7 +133,7 @@ npm run version patch|minor|major
 1. Build plugin: `npm run build`
 2. Copy `main.js`, `manifest.json`, `styles.css` to vault's `.obsidian/plugins/obsidian-claude-code/`
 3. Enable plugin in Obsidian settings
-4. Plugin will auto-download `claude-code-acp` binary on first connect
+4. Plugin will connect to Claude Code via the installed `claude` CLI
 
 ## Key Concepts
 
@@ -145,7 +145,7 @@ Internal module with clean architecture:
 - 209 tests covering 100% of public API
 
 ### ACP Transport
-The plugin spawns `claude-code-acp` as a child process and communicates via JSON-RPC over stdio.
+The plugin uses the Claude Agent SDK to spawn `claude` CLI as a child process. Communication is via NDJSON streaming over stdio.
 
 ### Vault Integration
 Vault files are mapped to the ACP file system protocol. The `[[` syntax allows adding notes to context.
@@ -264,7 +264,7 @@ Local git config for this repository:
 
 This does not affect global git settings.
 
-## Current Version: 1.0.12
+## Current Version: 1.5.2
 
 Features:
 - Full Claude Code agent integration
