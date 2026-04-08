@@ -57,6 +57,9 @@ export interface AcpClientEvents {
   // Slash commands
   onAvailableCommandsUpdate?: (commands: AvailableCommand[]) => void;
 
+  // Claude session ID tracking (for vault session linking)
+  onClaudeSessionIdChanged?: (sessionId: string) => void;
+
   // Legacy (for backward compatibility)
   onMessage?: (text: string) => void;
 }
@@ -367,8 +370,16 @@ export class ObsidianAcpClient {
         console.debug(`[ACP] ${update.sessionUpdate}:`, update);
         break;
 
-      default:
-        console.debug("[ACP] Unknown session update:", update);
+      default: {
+        // Handle custom session_id update from SDK adapter
+        const raw = update as unknown as { sessionUpdate: string; sessionId?: string };
+        if (raw.sessionUpdate === "session_id" && raw.sessionId) {
+          console.debug("[ACP] Claude session ID changed:", raw.sessionId);
+          this.events.onClaudeSessionIdChanged?.(raw.sessionId);
+        } else {
+          console.debug("[ACP] Unknown session update:", update);
+        }
+      }
     }
   }
 
@@ -397,6 +408,13 @@ export class ObsidianAcpClient {
 
   getSessionId(): string | null {
     return this.currentSessionId;
+  }
+
+  /**
+   * Get underlying IAcpClient instance (for adapter-specific methods)
+   */
+  getClient(): IAcpClient | null {
+    return this.client;
   }
 
   getCurrentMode(): { modeId: string } | null {

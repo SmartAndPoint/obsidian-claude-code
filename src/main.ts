@@ -104,6 +104,15 @@ export default class ClaudeCodePlugin extends Plugin {
         this.getChatView()?.updateAvailableCommands(commands);
       },
 
+      // Track Claude session ID changes (for vault session persistence)
+      onClaudeSessionIdChanged: (sessionId) => {
+        console.debug(`[Plugin] Claude session ID changed: ${sessionId}`);
+        const chatView = this.getChatView();
+        if (chatView) {
+          void chatView.linkClaudeSession(sessionId);
+        }
+      },
+
       // Legacy fallback (optional)
       onMessage: (text) => {
         // Used for backward compatibility if needed
@@ -226,6 +235,19 @@ export default class ClaudeCodePlugin extends Plugin {
 
   async disconnect(): Promise<void> {
     await this.acpClient?.disconnect();
+  }
+
+  /**
+   * Connect and set a Claude session ID for resume.
+   * The SDK adapter will use this ID on the next sendMessage via `resume` option.
+   */
+  async connectWithResume(claudeSessionId: string): Promise<void> {
+    await this.connect();
+    // Set resume session ID on the SDK adapter
+    const client = this.acpClient?.getClient();
+    if (client && "setResumeSessionId" in client) {
+      (client as { setResumeSessionId: (id: string) => void }).setResumeSessionId(claudeSessionId);
+    }
   }
 
   /**

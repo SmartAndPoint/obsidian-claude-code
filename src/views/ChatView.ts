@@ -1946,45 +1946,47 @@ For usage information, check [console.anthropic.com](https://console.anthropic.c
 
     await this.updateSessionInfo();
 
-    // Connect fresh and show history from vault file
-    // Note: loadSession/resumeSession are unstable and can crash the Claude Code process
+    // Build absolute path to session file for context injection
+    const vaultPath = (this.app.vault.adapter as unknown as { basePath: string }).basePath;
+    const sessionFilePath = `${vaultPath}/claude-code/sessions/session-${session.id}.md`;
+
+    // Try to resume Claude session, fallback to fresh connect
+    let resumed = false;
     if (session.claudeSessionId) {
+      try {
+        await this.plugin.connectWithResume(session.claudeSessionId);
+        resumed = true;
+        console.debug("[ChatView] Resumed Claude session:", session.claudeSessionId);
+      } catch {
+        console.debug("[ChatView] Resume failed, connecting fresh");
+      }
+    }
+
+    if (!resumed) {
       try {
         await this.plugin.connect();
         const newId = this.plugin.getSessionId();
         if (newId) await this.linkClaudeSession(newId);
-        this.updateSessionState("live");
-        this.addMessage({
-          role: "assistant",
-          content: `Session loaded: **${session.title}** (${session.messageCount} messages)\n\nConnected to a new Claude session. History shown above for context.`,
-          timestamp: new Date(),
-        });
       } catch (error) {
         console.error("[ChatView] Failed to connect:", error);
         this.updateSessionState("history-only");
         this.addMessage({
           role: "assistant",
-          content: `Session loaded: **${session.title}** (${session.messageCount} messages)\n\nCould not connect. Use the banner above to continue with context.`,
+          content: `Session loaded: **${session.title}** (${session.messageCount} messages)\n\nCould not connect.`,
           timestamp: new Date(),
         });
         return;
       }
-    } else {
-      // No Claude session ID - this is a fresh session or history only
-      if (session.messages.length > 0) {
-        // Has history but no Claude session - show as history-only
-        this.updateSessionState("history-only");
-        this.addMessage({
-          role: "assistant",
-          content: `Session loaded: **${session.title}** (${session.messageCount} messages)\n\n⚠️ Claude doesn't remember this conversation. Use the banner above to continue with context.`,
-          timestamp: new Date(),
-        });
-        return;
-      } else {
-        // Empty session - connect normally
-        await this.plugin.connect();
-        this.updateSessionState("live");
-      }
+    }
+
+    this.updateSessionState("live");
+
+    // Send hidden context message -- tell Claude where conversation history is
+    const contextMsg = `You are continuing a previous conversation with the user. The full conversation history (${session.messageCount} messages) is stored in: ${sessionFilePath}\nRead this file if you need context about what was discussed before. The user may refer to previous topics.`;
+    try {
+      await this.plugin.sendMessage(contextMsg);
+    } catch (error) {
+      console.warn("[ChatView] Context message failed:", error);
     }
 
     this.addMessage({

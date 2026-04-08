@@ -147,6 +147,14 @@ export class SdkAcpClient implements IAcpClient {
     return this.claudeSessionId;
   }
 
+  /**
+   * Set a Claude session ID to resume on next sendMessage
+   */
+  setResumeSessionId(sessionId: string): void {
+    this.claudeSessionId = sessionId;
+    console.debug("[SdkAcpClient] Resume session ID set:", sessionId);
+  }
+
   get signal(): AbortSignal {
     return this.abortController.signal;
   }
@@ -178,8 +186,9 @@ export class SdkAcpClient implements IAcpClient {
         permissionMode: "default",
       };
 
-      // Resume existing session if we have one
-      if (this.claudeSessionId) {
+      // Resume existing session if we have a valid Claude UUID
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (this.claudeSessionId && uuidRegex.test(this.claudeSessionId)) {
         sdkOptions.resume = this.claudeSessionId;
       }
 
@@ -224,10 +233,18 @@ export class SdkAcpClient implements IAcpClient {
           yield event;
         }
 
-        // Capture session ID from messages
-        if ("session_id" in msg && msg.session_id && !this.claudeSessionId) {
-          this.claudeSessionId = msg.session_id;
-          console.debug("[SdkAcpClient] Captured session ID:", this.claudeSessionId);
+        // Track Claude session ID -- may change on resume/fork
+        if ("session_id" in msg && msg.session_id) {
+          const newId = msg.session_id;
+          if (newId !== this.claudeSessionId) {
+            this.claudeSessionId = newId;
+            console.debug("[SdkAcpClient] Claude session ID:", newId);
+            // Notify via session update so ChatView can persist it
+            this.config.onSessionUpdate?.({
+              sessionUpdate: "session_id",
+              sessionId: newId,
+            } as unknown as import("../interfaces").SessionUpdate);
+          }
         }
       }
 
