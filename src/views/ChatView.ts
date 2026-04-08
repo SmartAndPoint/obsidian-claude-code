@@ -1946,35 +1946,28 @@ For usage information, check [console.anthropic.com](https://console.anthropic.c
 
     await this.updateSessionInfo();
 
-    // Try to resume Claude session if we have a stored ID
+    // Connect fresh and show history from vault file
+    // Note: loadSession/resumeSession are unstable and can crash the Claude Code process
     if (session.claudeSessionId) {
-      this.updateSessionState("resuming");
-      this.addMessage({
-        role: "assistant",
-        content: `Attempting to resume Claude session...`,
-        timestamp: new Date(),
-      });
-
       try {
-        await this.plugin.connectWithSession(session.claudeSessionId);
-        this.updateSessionState("live");
-        this.addMessage({
-          role: "assistant",
-          content: `✓ Session resumed. Claude remembers this conversation.`,
-          timestamp: new Date(),
-        });
-      } catch {
-        // connectWithSession threw — connect fresh, link new session
-        console.warn("[ChatView] Session resume failed, connecting fresh");
         await this.plugin.connect();
         const newId = this.plugin.getSessionId();
         if (newId) await this.linkClaudeSession(newId);
         this.updateSessionState("live");
         this.addMessage({
           role: "assistant",
-          content: `Session loaded: **${session.title}** (${session.messageCount} messages)\n\nConnected to a new session. History shown for context.`,
+          content: `Session loaded: **${session.title}** (${session.messageCount} messages)\n\nConnected to a new Claude session. History shown above for context.`,
           timestamp: new Date(),
         });
+      } catch (error) {
+        console.error("[ChatView] Failed to connect:", error);
+        this.updateSessionState("history-only");
+        this.addMessage({
+          role: "assistant",
+          content: `Session loaded: **${session.title}** (${session.messageCount} messages)\n\nCould not connect. Use the banner above to continue with context.`,
+          timestamp: new Date(),
+        });
+        return;
       }
     } else {
       // No Claude session ID - this is a fresh session or history only

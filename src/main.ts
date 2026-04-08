@@ -5,6 +5,7 @@ import { ChatView, CHAT_VIEW_TYPE } from "./views/ChatView";
 
 export default class ClaudeCodePlugin extends Plugin {
   private acpClient: ObsidianAcpClient | null = null;
+  private hasReconnected = false;
 
   /**
    * Get the active ChatView instance via workspace lookup
@@ -75,8 +76,12 @@ export default class ClaudeCodePlugin extends Plugin {
         console.error("[ACP Error]", error);
         // Check for internal error after session resume (expired session)
         const errorCode = (error as unknown as { code?: number }).code;
-        if (errorCode === -32603) {
+        if (errorCode === -32603 && !this.hasReconnected) {
+          this.hasReconnected = true;
           void this.reconnectFresh();
+        } else if (errorCode === -32603) {
+          new Notice("Connection error. Please start a new session.", 5000);
+          this.getChatView()?.updateStatus("connected");
         } else {
           new Notice(`Error: ${error.message}`);
           this.getChatView()?.updateStatus("disconnected");
@@ -251,6 +256,7 @@ export default class ClaudeCodePlugin extends Plugin {
    * @param claudeSessionId - The Claude session ID to resume
    */
   async connectWithSession(claudeSessionId: string): Promise<void> {
+    this.hasReconnected = false;
     try {
       this.getChatView()?.updateStatus("connecting");
       const vaultPath = (this.app.vault.adapter as unknown as { basePath: string }).basePath;
