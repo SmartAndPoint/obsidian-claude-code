@@ -46,12 +46,20 @@ export {
 } from "./factory";
 
 // Adapters
-export { createZedAdapter, ZedAcpAdapter, createNativeClient, NativeAcpClient } from "./adapters";
+export {
+  createZedAdapter,
+  ZedAcpAdapter,
+  createNativeClient,
+  NativeAcpClient,
+  createSdkClient,
+  SdkAcpClient,
+} from "./adapters";
 
 // Initialize implementations when the package is imported
 import { registerImplementation } from "./factory";
-import { createZedAdapter, createNativeClient } from "./adapters";
+import { createZedAdapter, createNativeClient, createSdkClient } from "./adapters";
 
 // Auto-register adapters
 registerImplementation("zed", createZedAdapter);
 registerImplementation("native", createNativeClient);
+registerImplementation("sdk", createSdkClient);

@@ -205,7 +205,7 @@ export class ObsidianAcpClient {
       };
 
       // Create the client using acp-core factory with native implementation
-      this.client = createAcpClient(config, "native");
+      this.client = createAcpClient(config, "sdk");
 
       // Connect with session config
       const session = await this.client.connect({

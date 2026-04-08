@@ -23,6 +23,7 @@ const context = await esbuild.context({
     "@lezer/lr",
     ...builtins,
   ],
+  define: { "import.meta.url": '"file:///obsidian-plugin"' },
   format: "cjs",
   target: "es2022",
   platform: "node",

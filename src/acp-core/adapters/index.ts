@@ -8,3 +8,6 @@ export { ZedAcpAdapter, createZedAdapter } from "./zed-adapter";
 
 // Native adapter
 export { NativeAcpClient, createNativeClient } from "./native-client";
+
+// SDK adapter (uses Claude Code CLI directly via subscription)
+export { SdkAcpClient, createSdkClient } from "./sdk-client";

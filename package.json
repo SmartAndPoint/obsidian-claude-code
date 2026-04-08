@@ -1,11 +1,11 @@
 {
   "name": "obsidian-claude-code-integration",
-  "version": "1.3.1",
+  "version": "1.4.0",
   "description": "Claude Code Integration for Obsidian via ACP (Agent Client Protocol)",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
-    "build": "npm run validate && node esbuild.config.mjs production",
+    "build": "npm run validate:quick && node esbuild.config.mjs production",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",

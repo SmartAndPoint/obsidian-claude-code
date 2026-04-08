@@ -10,7 +10,7 @@ import type { IAcpClient, AcpClientFactory, AcpClientConfig } from "./interfaces
 /**
  * Available implementation types
  */
-export type AcpImplementation = "zed" | "native";
+export type AcpImplementation = "zed" | "native" | "sdk";
 
 /**
  * Registry of available implementations
