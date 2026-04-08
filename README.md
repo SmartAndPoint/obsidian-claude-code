@@ -11,12 +11,16 @@ This plugin integrates the full Claude Code agent experience into your vault: no
 ## Features
 
 - **Full Claude Code Agent** — The same powerful AI assistant used in VS Code, Cursor, and Zed
+- **Works with Claude Pro/Max subscriptions** — Uses the official Claude Agent SDK, no API key required
+- **Session memory** — Conversations persist in your vault and Claude restores context automatically when you resume
 - **File Operations** — Claude can read, write, and edit files in your vault with your permission
 - **Tool Execution** — Supports bash commands, file search, and other tools
+- **Clipboard paste** — Paste images and files directly into chat (images saved to vault, files referenced by path)
 - **Permission System** — You control what Claude can do with intuitive Allow/Deny prompts
 - **Streaming Responses** — Real-time message display with markdown rendering
-- **Code Selection** — Select code and send it to Claude with `Cmd+Shift+.`
+- **Code Selection** — Select code and send it to Claude with `Cmd+Shift+.` — shows as @N chip references
 - **Diff Viewer** — Review file changes before applying them
+- **Session picker** — Switch between conversations, each stored as a searchable markdown file in your vault
 
 ## Requirements
 
@@ -111,8 +115,7 @@ $env:ANTHROPIC_API_KEY = "sk-ant-api03-..."
 
 1. Click the **bot icon** in the left ribbon to open the Claude Code Integration panel
 2. Click the **plug icon** (⚡) in the chat header to connect
-3. On first connection, the plugin will automatically download the required components (~30 seconds)
-4. Start chatting!
+3. Start chatting!
 
 ## Usage
 
@@ -148,28 +151,34 @@ When Claude wants to perform actions (edit files, run commands), you'll see a pe
 
 ## Troubleshooting
 
-### "Failed to find or download claude-code-acp binary"
+### "Claude CLI not found"
 
-Make sure Node.js and npm are installed and accessible:
+The plugin requires the `claude` CLI to be installed and in your PATH:
 ```bash
-node --version  # Should be 18+
-npm --version
+claude --version  # Should print version
+which claude      # Should print path (e.g., /opt/homebrew/bin/claude)
 ```
+
+If not installed, visit [claude.ai/code](https://claude.ai/code) to install Claude Code.
 
 ### Connection Issues
 
-1. Check that your `ANTHROPIC_API_KEY` is set correctly
-2. Restart Obsidian after setting the environment variable
-3. Check the Developer Console (`Cmd+Option+I`) for error messages
+1. Make sure `claude` works in your terminal first: `claude "Hello"`
+2. If using an API key, check it's set in your environment
+3. Restart Obsidian after installing Claude Code or setting environment variables
+4. Check the Developer Console (`Cmd+Option+I`) for error messages
 
-### Binary Location
+### Session Data
 
-The plugin stores the Claude Code ACP binary in:
+Sessions are stored as markdown files in your vault:
 ```
-YOUR_VAULT/.obsidian/plugins/obsidian-claude-code/bin/
+YOUR_VAULT/claude-code/sessions/
 ```
 
-You can delete this folder to force a fresh download.
+Pasted images are stored in:
+```
+YOUR_VAULT/claude-code/images/
+```
 
 ## Privacy & Security
 
@@ -203,4 +212,4 @@ Created and maintained by [Evgenii Konev](https://smartandpoint.com/people/evgen
 
 - [Claude Code](https://claude.ai/code) — Official Claude Code
 - [Anthropic](https://anthropic.com) — The company behind Claude
-- [Agent Client Protocol](https://agentclientprotocol.com/) — The protocol powering this integration
+- [Claude Agent SDK](https://platform.claude.com/docs/en/agent-sdk/overview) — The SDK powering this integration
