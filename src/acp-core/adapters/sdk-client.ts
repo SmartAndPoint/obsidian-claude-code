@@ -7,7 +7,8 @@
  */
 
 import { execSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { dirname, join } from "node:path";
 import EventEmitter from "node:events";
 
 // Polyfill: Electron's Node.js may not support setMaxListeners(n, EventTarget)
@@ -62,6 +63,7 @@ export class SdkAcpClient implements IAcpClient {
   private closedResolve: (() => void) | null = null;
   private claudeSessionId: string | null = null;
   private claudePath: string | null = null;
+  private additionalDirs: string[] = [];
 
   constructor(config?: AcpClientConfig) {
     this.config = config ?? {};
@@ -108,6 +110,9 @@ export class SdkAcpClient implements IAcpClient {
       createdAt: new Date(),
       isActive: true,
     };
+
+    // Load additional directories from settings
+    this.loadAdditionalDirs();
 
     this.connected = true;
     this.config.onConnect?.();
@@ -179,11 +184,16 @@ export class SdkAcpClient implements IAcpClient {
       yield { type: "message_start", messageId: `msg-${Date.now()}` };
 
       // Build SDK options
+      // Reload additional dirs in case they changed since connect
+      this.loadAdditionalDirs();
+
       const sdkOptions: SdkOptions = {
         cwd: this.cwd,
         pathToClaudeCodeExecutable: this.claudePath,
         includePartialMessages: true,
-        permissionMode: "acceptEdits",
+        permissionMode: "default",
+        settingSources: ["user", "project", "local"],
+        ...(this.additionalDirs.length > 0 ? { additionalDirectories: this.additionalDirs } : {}),
       };
 
       // Resume existing session if we have a valid Claude UUID
@@ -198,12 +208,17 @@ export class SdkAcpClient implements IAcpClient {
         sdkOptions.canUseTool = async (
           toolName: string,
           input: Record<string, unknown>,
-          _opts: { signal: AbortSignal }
+          opts: {
+            signal: AbortSignal;
+            suggestions?: import("@anthropic-ai/claude-agent-sdk").PermissionUpdate[];
+            blockedPath?: string;
+          }
         ): Promise<PermissionResult> => {
           try {
             console.warn(
               "[SdkAcpClient] Permission request:",
               toolName,
+              opts.blockedPath ? `blockedPath: ${opts.blockedPath}` : "",
               JSON.stringify(input).slice(0, 200)
             );
             const result = await handler({
@@ -213,10 +228,59 @@ export class SdkAcpClient implements IAcpClient {
                 input,
                 status: "pending",
               },
-              description: `${toolName}: ${JSON.stringify(input).slice(0, 100)}`,
+              description: opts.blockedPath
+                ? `${toolName}: access to ${opts.blockedPath}`
+                : `${toolName}: ${JSON.stringify(input).slice(0, 100)}`,
             });
-            console.warn("[SdkAcpClient] Permission result:", result.granted);
+            const isAlwaysAllow = result.granted && result.optionId === "allow_always";
+            console.warn(
+              "[SdkAcpClient] Permission result:",
+              result.granted,
+              isAlwaysAllow ? "(always)" : "(once)"
+            );
             if (result.granted) {
+              // For "Always Allow" -- pass suggestions so SDK persists rules
+              // For "Allow" (once) -- no updatedPermissions, just allow this call
+              if (isAlwaysAllow) {
+                const updatedPermissions = opts.suggestions ?? [
+                  {
+                    type: "addRules" as const,
+                    rules: [{ toolName }],
+                    behavior: "allow" as const,
+                    destination: "session" as const,
+                  },
+                ];
+
+                // If path is outside CWD, also add directory
+                const filePath =
+                  opts.blockedPath ??
+                  (input.file_path as string | undefined) ??
+                  (input.path as string | undefined);
+
+                if (
+                  filePath &&
+                  this.cwd &&
+                  filePath.startsWith("/") &&
+                  !filePath.startsWith(this.cwd)
+                ) {
+                  const parentDir = dirname(dirname(filePath));
+                  const targetDir = parentDir !== dirname(filePath) ? parentDir : dirname(filePath);
+                  updatedPermissions.push({
+                    type: "addDirectories",
+                    directories: [targetDir],
+                    destination: "localSettings",
+                  });
+                  // Also write directly in case SDK doesn't persist
+                  this.addDirectoryToSettings(targetDir);
+                  console.warn("[SdkAcpClient] Adding directory:", targetDir);
+                }
+
+                return {
+                  behavior: "allow",
+                  updatedPermissions,
+                };
+              }
+
               return { behavior: "allow" };
             } else {
               return { behavior: "deny", message: result.reason ?? "Denied by user" };
@@ -325,6 +389,71 @@ export class SdkAcpClient implements IAcpClient {
       this.currentQuery = null;
     }
     return Promise.resolve();
+  }
+
+  /**
+   * Add a blocked path's parent directory to .claude/settings.local.json
+   * so future tool calls and subagents can access it without prompting.
+   */
+  /**
+   * Load additionalDirectories from .claude/settings.local.json
+   */
+  private loadAdditionalDirs(): void {
+    if (!this.cwd) return;
+    try {
+      const settingsPath = join(this.cwd, ".claude", "settings.local.json");
+      if (existsSync(settingsPath)) {
+        const settings = JSON.parse(readFileSync(settingsPath, "utf-8")) as Record<string, unknown>;
+        if (Array.isArray(settings.additionalDirectories)) {
+          this.additionalDirs = settings.additionalDirectories as string[];
+          console.warn("[SdkAcpClient] Loaded additional dirs:", this.additionalDirs);
+        }
+      }
+    } catch {
+      // Ignore parse errors
+    }
+  }
+
+  /**
+   * Write directory to .claude/settings.local.json directly via Node.js
+   * SDK's addDirectories may not persist in print mode, so we do it ourselves.
+   */
+  private addDirectoryToSettings(targetDir: string): void {
+    if (!this.cwd) return;
+    try {
+      const settingsPath = join(this.cwd, ".claude", "settings.local.json");
+
+      let settings: Record<string, unknown> = {};
+      if (existsSync(settingsPath)) {
+        try {
+          settings = JSON.parse(readFileSync(settingsPath, "utf-8")) as Record<string, unknown>;
+        } catch {
+          settings = {};
+        }
+      }
+
+      const dirs = Array.isArray(settings.additionalDirectories)
+        ? (settings.additionalDirectories as string[])
+        : [];
+
+      // Skip if already covered
+      if (dirs.some((d) => targetDir.startsWith(d) || d.startsWith(targetDir))) {
+        return;
+      }
+
+      dirs.push(targetDir);
+      settings.additionalDirectories = dirs;
+
+      const claudeDir = join(this.cwd, ".claude");
+      if (!existsSync(claudeDir)) {
+        mkdirSync(claudeDir, { recursive: true });
+      }
+
+      writeFileSync(settingsPath, JSON.stringify(settings, null, 2), "utf-8");
+      console.warn("[SdkAcpClient] Wrote directory to settings.local.json:", targetDir);
+    } catch (err) {
+      console.warn("[SdkAcpClient] Failed to write settings:", err);
+    }
   }
 
   // ============================================================================
