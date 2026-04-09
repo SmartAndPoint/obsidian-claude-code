@@ -1508,6 +1508,70 @@
   font-size: 12px;
 }
 
+/* ===== Tool Activity Group ===== */
+
+.tool-activity-group {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  margin: 4px 0;
+  overflow: hidden;
+}
+
+.tool-activity-group.is-collapsed {
+  border-color: var(--background-modifier-border);
+}
+
+.tool-activity-header {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  cursor: pointer;
+  background: var(--background-secondary);
+  font-size: 13px;
+  color: var(--text-muted);
+  gap: 6px;
+  user-select: none;
+}
+
+.tool-activity-header:hover {
+  background: var(--background-secondary-alt);
+}
+
+.tool-activity-icon {
+  font-size: 14px;
+}
+
+.tool-activity-count {
+  flex-grow: 1;
+}
+
+.tool-activity-chevron {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.tool-activity-body {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.tool-activity-body.is-collapsed {
+  display: none;
+}
+
+/* Compact tool cards inside group */
+.tool-activity-group .tool-card {
+  margin: 0;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.tool-activity-group .tool-card:last-child {
+  border-bottom: none;
+}
+
 /* Diff header path styling */
 .diff-header .vault-path-clickable {
   font-family: var(--font-monospace);

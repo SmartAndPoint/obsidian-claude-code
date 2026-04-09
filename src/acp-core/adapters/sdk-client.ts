@@ -193,6 +193,8 @@ export class SdkAcpClient implements IAcpClient {
         includePartialMessages: true,
         permissionMode: "default",
         settingSources: ["user", "project", "local"],
+        // Auto-approve safe file operations; Bash and dangerous tools still go through canUseTool
+        allowedTools: ["Read", "Write", "Edit", "Glob", "Grep", "LS"],
         ...(this.additionalDirs.length > 0 ? { additionalDirectories: this.additionalDirs } : {}),
       };
 

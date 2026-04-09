@@ -31,6 +31,7 @@ import {
   SelectionChipsContainer,
   formatAgentPaths,
   DiffModal,
+  ToolActivityGroup,
   SessionPickerModal,
 } from "../components";
 import { VaultSessionService } from "../services/VaultSessionService";
@@ -79,6 +80,7 @@ export class ChatView extends ItemView {
 
   // Tool calls state (track by ID for updates)
   private toolCallCards: Map<string, ToolCallCard> = new Map();
+  private currentActivityGroup: ToolActivityGroup | null = null;
 
   // Pending Edit tool calls by file path (for batching)
   private pendingEditsByFile: Map<
@@ -565,6 +567,12 @@ export class ChatView extends ItemView {
       this.currentThinkingBlock = null;
     }
 
+    // Close activity group when text response arrives
+    if (this.currentActivityGroup && rawText.trim()) {
+      this.currentActivityGroup.collapse();
+      this.currentActivityGroup = null;
+    }
+
     // Add paragraph break if needed (after tool call)
     if (this.needsParagraphBreak && rawText.trim()) {
       this.pendingText += "\n\n";
@@ -609,11 +617,20 @@ export class ChatView extends ItemView {
       this.currentStreamingEl = null;
     }
 
-    // Create tool card
-    const card = new ToolCallCard(this.messagesContainer, toolCall, this.app, {
-      onViewDiff: (diff) => this.showDiffModal(diff),
-    });
+    // Create or reuse activity group
+    if (!this.currentActivityGroup) {
+      this.currentActivityGroup = new ToolActivityGroup(this.messagesContainer);
+    }
 
+    // Create tool card inside the activity group body
+    const card = new ToolCallCard(
+      this.currentActivityGroup.getElement().querySelector(".tool-activity-body") as HTMLElement,
+      toolCall,
+      this.app,
+      { onViewDiff: (diff) => this.showDiffModal(diff) }
+    );
+
+    this.currentActivityGroup.addToolCard(card);
     this.toolCallCards.set(toolCallId, card);
 
     // Track Edit tool calls by file path for batching
@@ -664,6 +681,8 @@ export class ChatView extends ItemView {
     // Remove completed Edit from pending tracking
     if (update.status === "completed" || update.status === "failed") {
       this.removeFromPendingEdits(toolCallId);
+      // Notify activity group
+      this.currentActivityGroup?.markCompleted();
     }
 
     this.scrollToBottom();
@@ -2015,6 +2034,7 @@ Note: additionalDirectories is a top-level key, NOT inside "permissions". This g
     this.autoApprovedFiles.clear();
     this.currentThinkingBlock = null;
     this.currentStreamingEl = null;
+    this.currentActivityGroup = null;
     this.currentAssistantMessage = "";
     this.currentVaultSessionId = null;
     this.updateSessionState("disconnected");
