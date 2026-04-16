@@ -14,16 +14,14 @@ import EventEmitter from "node:events";
 // Polyfill: Electron's Node.js may not support setMaxListeners(n, EventTarget)
 // The SDK calls events.setMaxListeners(50, abortSignal) which crashes on older Node.
 // Patch the module-level function so the SDK picks it up.
-const origSetMaxListeners = EventEmitter.setMaxListeners;
-if (origSetMaxListeners) {
-  EventEmitter.setMaxListeners = function (n: number, ...args: unknown[]) {
-    try {
-      origSetMaxListeners(n, ...(args as [never]));
-    } catch {
-      // Silently ignore if EventTarget not supported
-    }
-  } as typeof EventEmitter.setMaxListeners;
-}
+const origSetMaxListeners = EventEmitter.setMaxListeners.bind(EventEmitter);
+EventEmitter.setMaxListeners = function (n: number, ...args: unknown[]) {
+  try {
+    origSetMaxListeners(n, ...(args as [never]));
+  } catch {
+    // Silently ignore if EventTarget not supported
+  }
+} as typeof EventEmitter.setMaxListeners;
 
 import type {
   IAcpClient,
