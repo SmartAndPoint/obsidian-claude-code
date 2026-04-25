@@ -39,36 +39,50 @@
   flex-grow: 1;
 }
 
+/* Status text in the bottom status bar — flat, no pill, color carried by
+   a small dot prefix to match Obsidian's native status-bar style. */
 .chat-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 12px;
-  padding: 4px 8px;
-  border-radius: 4px;
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
-.status-disconnected {
-  background: var(--background-modifier-error);
+.chat-status::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.chat-status.status-disconnected {
   color: var(--text-error);
 }
 
-.status-connecting {
-  background: var(--background-modifier-warning);
-  color: var(--text-warning);
+.chat-status.status-connecting {
+  color: var(--color-orange);
 }
 
-.status-connected {
-  background: var(--background-modifier-success);
-  color: var(--text-success);
+.chat-status.status-connected {
+  color: var(--color-green);
 }
 
-.status-thinking {
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
+.chat-status.status-thinking {
+  color: var(--interactive-accent);
+}
+
+.chat-status.status-thinking::before {
   animation: pulse 1.5s ease-in-out infinite;
 }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+  50% { opacity: 0.3; }
 }
 
 .chat-connect-btn {

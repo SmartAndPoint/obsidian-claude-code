@@ -1,4 +1,13 @@
 import { App, PluginSettingTab, Setting, Notice } from "obsidian";
+
+interface SettingsApi {
+  open: () => void;
+  openTabById: (id: string) => unknown;
+  activeTab?: {
+    setting?: { search?: { setValue: (v: string) => void; onChanged?: () => void } };
+    searchComponent?: { setValue: (v: string) => void; onChanged?: () => void };
+  };
+}
 import type ClaudeCodePlugin from "./main";
 import { PERMISSION_MODES, KNOWN_TOOLS, type PermissionMode } from "./settings";
 import { findClaudeBinary } from "./acp-core/adapters";
@@ -56,6 +65,19 @@ export class ClaudeCodeSettingTab extends PluginSettingTab {
     // Permissions section
     // ====================================================================
     new Setting(containerEl).setName("Permissions").setHeading();
+
+    new Setting(containerEl)
+      .setName("Cycle mode hotkey")
+      .setDesc(
+        // eslint-disable-next-line obsidianmd/ui/sentence-case -- mode names are proper nouns
+        "Bind a keyboard shortcut to cycle through Cautious → Auto-edit → Plan → Bypass. Opens Obsidian's hotkey settings pre-filtered to this command."
+      )
+      .addButton((btn) =>
+        btn
+          .setButtonText("Configure hotkey")
+          .setCta()
+          .onClick(() => this.openHotkeySettings())
+      );
 
     new Setting(containerEl)
       .setName("Default permission mode")
@@ -122,6 +144,32 @@ export class ClaudeCodeSettingTab extends PluginSettingTab {
         toggle();
       });
       input.addEventListener("change", () => toggle(input.checked));
+    }
+  }
+
+  /**
+   * Open Obsidian's Hotkeys settings with the cycle-mode command pre-searched.
+   * Standard pattern used by many community plugins (Dataview, Vimrc, etc.).
+   * Falls back to a Notice if the internal API surface differs.
+   */
+  private openHotkeySettings(): void {
+    const settingApi = (this.app as unknown as { setting?: SettingsApi }).setting;
+    if (!settingApi) {
+      new Notice(
+        // eslint-disable-next-line obsidianmd/ui/sentence-case -- references Obsidian UI labels
+        "Open Settings → Hotkeys and search for 'Cycle permission mode'"
+      );
+      return;
+    }
+    settingApi.open();
+    settingApi.openTabById("hotkeys");
+    // Best-effort search injection — Obsidian's internal layout has shifted
+    // across versions; both shapes are seen in the wild.
+    const tab = settingApi.activeTab;
+    const search = tab?.searchComponent ?? tab?.setting?.search;
+    if (search) {
+      search.setValue("Cycle permission mode");
+      search.onChanged?.();
     }
   }
 }

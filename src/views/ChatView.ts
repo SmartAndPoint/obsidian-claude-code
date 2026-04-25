@@ -169,8 +169,10 @@ export class ChatView extends ItemView {
     // Session info (shown when session is active)
     this.sessionInfoEl = titleRow.createDiv({ cls: "chat-session-info is-hidden" });
 
-    this.statusIndicator = header.createDiv({ cls: "chat-status" });
-    this.updateStatus("disconnected");
+    // Status indicator placeholder — actual element lives in the bottom
+    // status bar (created later in onOpen). Initialized empty here so
+    // updateStatus() before the bar exists is harmless.
+    this.statusIndicator = createDiv({ cls: "chat-status" });
 
     // Copy all button
     const copyAllBtn = header.createEl("button", { cls: "chat-copy-all-btn" });
@@ -314,14 +316,20 @@ export class ChatView extends ItemView {
     this.sendButton.addEventListener("click", () => void this.handleSend());
 
     // Plugin status bar (under the input row): permission mode chip on the
-    // left; right side reserved for future signals (active subagents, etc.).
+    // left, connection/activity status on the right.
     const statusBar = this.inputContainer.createDiv({ cls: "chat-status-bar" });
     const statusBarLeft = statusBar.createDiv({ cls: "chat-status-bar-left" });
-    statusBar.createDiv({ cls: "chat-status-bar-right" });
+    const statusBarRight = statusBar.createDiv({ cls: "chat-status-bar-right" });
 
     this.modeChipEl = statusBarLeft.createEl("button", { cls: "chat-mode-chip" });
     this.modeChipEl.addEventListener("click", (e) => this.openModeMenu(e));
     this.refreshModeChip();
+
+    // Mount the previously-detached status indicator into the bar's right
+    // slot. It now reads "Disconnected" / "Connecting…" / "Connected" /
+    // "Thinking…" instead of being a header pill.
+    statusBarRight.appendChild(this.statusIndicator);
+    this.updateStatus("disconnected");
 
     // File suggestion for [[ syntax
     this.fileSuggest = new FileSuggest(this.app, this.inputContainer, this.textarea, (path) => {
