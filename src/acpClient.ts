@@ -133,7 +133,12 @@ export class ObsidianAcpClient {
     workingDirectory: string,
     pluginDir: string,
     apiKey?: string,
-    onDownloadProgress?: ProgressCallback
+    onDownloadProgress?: ProgressCallback,
+    sdkConfig?: {
+      claudePath?: string;
+      permissionMode?: "default" | "acceptEdits" | "plan" | "bypassPermissions";
+      autoApprovedTools?: string[];
+    }
   ): Promise<void> {
     try {
       // Find or download claude-code-acp binary using BinaryManager
@@ -210,6 +215,19 @@ export class ObsidianAcpClient {
 
       // Create the client using acp-core factory with native implementation
       this.client = createAcpClient(config, "sdk");
+
+      // Apply plugin-driven SDK settings (path override, permission mode, allowed tools).
+      // Done AFTER instantiation, BEFORE connect() so resolveClaudePath() honors override.
+      if (sdkConfig) {
+        const c = this.client as unknown as {
+          setClaudePathOverride?: (p: string) => void;
+          setPermissionMode?: (m: string) => void;
+          setAutoApprovedTools?: (t: string[]) => void;
+        };
+        if (sdkConfig.claudePath !== undefined) c.setClaudePathOverride?.(sdkConfig.claudePath);
+        if (sdkConfig.permissionMode) c.setPermissionMode?.(sdkConfig.permissionMode);
+        if (sdkConfig.autoApprovedTools) c.setAutoApprovedTools?.(sdkConfig.autoApprovedTools);
+      }
 
       // Connect with session config
       const session = await this.client.connect({

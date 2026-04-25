@@ -1,9 +1,13 @@
 import { Plugin, Notice, WorkspaceLeaf } from "obsidian";
 import { ObsidianAcpClient, AcpClientEvents } from "./acpClient";
 import type { SendMessageOptions } from "./acp-core";
+import { SdkAcpClient } from "./acp-core/adapters";
 import { ChatView, CHAT_VIEW_TYPE } from "./views/ChatView";
+import { ClaudeCodeSettingTab } from "./SettingTab";
+import { DEFAULT_SETTINGS, type PluginSettings, type PermissionMode } from "./settings";
 
 export default class ClaudeCodePlugin extends Plugin {
+  settings: PluginSettings = { ...DEFAULT_SETTINGS };
   private acpClient: ObsidianAcpClient | null = null;
   private hasReconnected = false;
 
@@ -20,8 +24,9 @@ export default class ClaudeCodePlugin extends Plugin {
   }
 
   async onload(): Promise<void> {
-    await Promise.resolve(); // Required for Obsidian Plugin interface
     console.debug("Loading Claude Code Integration plugin");
+    await this.loadSettings();
+    this.addSettingTab(new ClaudeCodeSettingTab(this.app, this));
 
     // Register chat view - don't store reference to avoid memory leaks
     this.registerView(CHAT_VIEW_TYPE, (leaf) => new ChatView(leaf, this));
@@ -180,6 +185,55 @@ export default class ClaudeCodePlugin extends Plugin {
     void this.acpClient?.disconnect();
   }
 
+  async loadSettings(): Promise<void> {
+    const data = (await this.loadData()) as Partial<PluginSettings> | null;
+    this.settings = { ...DEFAULT_SETTINGS, ...(data ?? {}) };
+  }
+
+  async saveSettings(): Promise<void> {
+    await this.saveData(this.settings);
+    // Push live changes to the active SDK adapter (path/tools take effect
+    // on next connect; mode applies to next query).
+    const client = this.acpClient?.getClient();
+    if (client instanceof SdkAcpClient) {
+      client.setClaudePathOverride(this.settings.claudePath);
+      client.setAutoApprovedTools(this.settings.autoApprovedTools);
+    }
+  }
+
+  /**
+   * Build the SDK config bag passed into ObsidianAcpClient.connect().
+   * Path override needs to land BEFORE resolveClaudePath() runs.
+   */
+  private buildSdkConfig(): {
+    claudePath: string;
+    permissionMode: PermissionMode;
+    autoApprovedTools: string[];
+  } {
+    return {
+      claudePath: this.settings.claudePath,
+      permissionMode: this.settings.lastUsedPermissionMode,
+      autoApprovedTools: this.settings.autoApprovedTools,
+    };
+  }
+
+  /**
+   * Switch permission mode for the current session (called from chat chip).
+   * Persists as lastUsedPermissionMode so the choice survives reconnects.
+   */
+  async setPermissionMode(mode: PermissionMode): Promise<void> {
+    this.settings.lastUsedPermissionMode = mode;
+    await this.saveData(this.settings);
+    const client = this.acpClient?.getClient();
+    if (client instanceof SdkAcpClient) {
+      client.setPermissionMode(mode);
+    }
+  }
+
+  getPermissionMode(): PermissionMode {
+    return this.settings.lastUsedPermissionMode;
+  }
+
   async activateChatView(): Promise<void> {
     const { workspace } = this.app;
 
@@ -212,7 +266,7 @@ export default class ClaudeCodePlugin extends Plugin {
 
       console.debug(`[Plugin] Plugin directory: ${pluginDir}`);
 
-      // Connect with download progress callback
+      // Connect with download progress callback + plugin settings
       await this.acpClient?.connect(
         vaultPath,
         pluginDir,
@@ -225,7 +279,8 @@ export default class ClaudeCodePlugin extends Plugin {
           } else if (progress.status === "error") {
             new Notice(`Error: ${progress.message}`, 5000);
           }
-        }
+        },
+        this.buildSdkConfig()
       );
     } catch (error) {
       new Notice(`Failed to connect: ${(error as Error).message}`);
@@ -288,14 +343,20 @@ export default class ClaudeCodePlugin extends Plugin {
         : __dirname;
 
       // Connect first
-      await this.acpClient?.connect(vaultPath, pluginDir, undefined, (progress) => {
-        if (progress.status === "downloading" || progress.status === "installing") {
-          new Notice(progress.message, 3000);
-          this.getChatView()?.updateStatus("connecting", progress.message);
-        } else if (progress.status === "error") {
-          new Notice(`Error: ${progress.message}`, 5000);
-        }
-      });
+      await this.acpClient?.connect(
+        vaultPath,
+        pluginDir,
+        undefined,
+        (progress) => {
+          if (progress.status === "downloading" || progress.status === "installing") {
+            new Notice(progress.message, 3000);
+            this.getChatView()?.updateStatus("connecting", progress.message);
+          } else if (progress.status === "error") {
+            new Notice(`Error: ${progress.message}`, 5000);
+          }
+        },
+        this.buildSdkConfig()
+      );
 
       // Try to load/resume the session
       // Prefer loadSession (stable) over resumeSession (UNSTABLE)

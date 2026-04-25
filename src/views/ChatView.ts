@@ -6,7 +6,9 @@ import {
   MarkdownView,
   Modal,
   Setting,
+  Menu,
 } from "obsidian";
+import { PERMISSION_MODES, type PermissionMode } from "../settings";
 import { execSync } from "node:child_process";
 import { existsSync, statSync } from "node:fs";
 import type ClaudeCodePlugin from "../main";
@@ -132,6 +134,7 @@ export class ChatView extends ItemView {
   private sessionInfoEl: HTMLElement | null = null;
   private sessionState: SessionState = "disconnected";
   private historyBannerEl: HTMLElement | null = null;
+  private modeChipEl: HTMLButtonElement | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: ClaudeCodePlugin) {
     super(leaf);
@@ -165,6 +168,11 @@ export class ChatView extends ItemView {
 
     // Session info (shown when session is active)
     this.sessionInfoEl = titleRow.createDiv({ cls: "chat-session-info is-hidden" });
+
+    // Permission mode chip (terminal-parity: mirrors Shift+Tab cycling)
+    this.modeChipEl = titleRow.createEl("button", { cls: "chat-mode-chip" });
+    this.modeChipEl.addEventListener("click", (e) => this.openModeMenu(e));
+    this.refreshModeChip();
 
     this.statusIndicator = header.createDiv({ cls: "chat-status" });
     this.updateStatus("disconnected");
@@ -1201,6 +1209,53 @@ export class ChatView extends ItemView {
       },
     });
     modal.open();
+  }
+
+  /**
+   * Render the mode chip with current permission mode's icon + label.
+   */
+  private refreshModeChip(): void {
+    if (!this.modeChipEl) return;
+    const current = this.plugin.getPermissionMode();
+    const meta = PERMISSION_MODES.find((m) => m.id === current) ?? PERMISSION_MODES[0];
+    this.modeChipEl.empty();
+    this.modeChipEl.removeClass(
+      "mode-default",
+      "mode-acceptEdits",
+      "mode-plan",
+      "mode-bypassPermissions"
+    );
+    this.modeChipEl.addClass(`mode-${meta.id}`);
+    this.modeChipEl.setAttribute(
+      "aria-label",
+      `Permission mode: ${meta.label} — ${meta.description}. Click to change.`
+    );
+    this.modeChipEl.createSpan({ text: `${meta.icon} ${meta.label}` });
+    const arrow = this.modeChipEl.createSpan({ cls: "chat-mode-chip-arrow" });
+    arrow.setText(" ▾");
+  }
+
+  /**
+   * Open dropdown menu with all permission modes.
+   */
+  private openModeMenu(evt: MouseEvent): void {
+    const menu = new Menu();
+    const current = this.plugin.getPermissionMode();
+    for (const mode of PERMISSION_MODES) {
+      menu.addItem((item) => {
+        item.setTitle(`${mode.icon} ${mode.label}`);
+        if (mode.id === current) item.setChecked(true);
+        item.onClick(() => {
+          void this.handleModeChange(mode.id);
+        });
+      });
+    }
+    menu.showAtMouseEvent(evt);
+  }
+
+  private async handleModeChange(mode: PermissionMode): Promise<void> {
+    await this.plugin.setPermissionMode(mode);
+    this.refreshModeChip();
   }
 
   updateStatus(

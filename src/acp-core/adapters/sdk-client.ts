@@ -50,6 +50,62 @@ import type {
   PermissionResult,
 } from "@anthropic-ai/claude-agent-sdk";
 
+/**
+ * Probe for the `claude` CLI across platforms and install methods.
+ * Order: env override → which/where (with augmented PATH) → known install dirs.
+ * Exported so SettingTab can reuse the same probe logic.
+ */
+export function findClaudeBinary(): string | null {
+  const isWin = process.platform === "win32";
+  const home = homedir();
+
+  const envOverride = process.env.CLAUDE_CODE_PATH || process.env.CLAUDE_BIN;
+  if (envOverride && existsSync(envOverride)) return envOverride;
+
+  const candidates: string[] = isWin
+    ? [
+        join(home, ".local", "bin", "claude.exe"),
+        join(home, ".local", "bin", "claude.cmd"),
+        join(home, "AppData", "Local", "Programs", "claude", "claude.exe"),
+        join(home, "AppData", "Roaming", "npm", "claude.cmd"),
+        join(home, "AppData", "Roaming", "npm", "claude.exe"),
+        join(home, ".bun", "bin", "claude.exe"),
+        join(home, ".volta", "bin", "claude.exe"),
+      ]
+    : [
+        join(home, ".local", "bin", "claude"),
+        join(home, ".claude", "local", "claude"),
+        "/opt/homebrew/bin/claude",
+        "/usr/local/bin/claude",
+        "/usr/bin/claude",
+        join(home, ".bun", "bin", "claude"),
+        join(home, ".volta", "bin", "claude"),
+        join(home, ".npm-global", "bin", "claude"),
+        join(home, "bin", "claude"),
+      ];
+
+  const sep = isWin ? ";" : ":";
+  const extraPath = candidates.map((c) => dirname(c)).join(sep);
+  const augmentedPath = `${process.env.PATH ?? ""}${sep}${extraPath}`;
+  try {
+    const cmd = isWin ? "where claude" : "which claude";
+    const out = execSync(cmd, {
+      encoding: "utf-8",
+      env: { ...process.env, PATH: augmentedPath },
+    })
+      .split(/\r?\n/)[0]
+      .trim();
+    if (out && existsSync(out)) return out;
+  } catch {
+    // fall through
+  }
+
+  for (const p of candidates) {
+    if (existsSync(p)) return p;
+  }
+  return null;
+}
+
 export class SdkAcpClient implements IAcpClient {
   private config: AcpClientConfig;
   private permissionHandler: PermissionHandler | null = null;
@@ -62,7 +118,12 @@ export class SdkAcpClient implements IAcpClient {
   private closedResolve: (() => void) | null = null;
   private claudeSessionId: string | null = null;
   private claudePath: string | null = null;
+  private claudePathOverride: string | null = null;
   private additionalDirs: string[] = [];
+
+  // Runtime SDK options driven by plugin settings / mode chip
+  private permissionMode: SdkOptions["permissionMode"] = "default";
+  private autoApprovedTools: string[] = ["Read", "Glob", "Grep", "LS"];
 
   constructor(config?: AcpClientConfig) {
     this.config = config ?? {};
@@ -154,6 +215,34 @@ export class SdkAcpClient implements IAcpClient {
     console.debug("[SdkAcpClient] Resume session ID set:", sessionId);
   }
 
+  /**
+   * Override CLI path (from plugin settings). Empty string clears override.
+   * Takes effect on next connect().
+   */
+  setClaudePathOverride(path: string): void {
+    this.claudePathOverride = path && path.trim().length > 0 ? path.trim() : null;
+  }
+
+  /**
+   * Set permission mode (mirrors terminal `Shift+Tab` cycling).
+   * Applied to the next query() — does not affect in-flight messages.
+   */
+  setPermissionMode(mode: SdkOptions["permissionMode"]): void {
+    this.permissionMode = mode;
+    console.debug("[SdkAcpClient] Permission mode:", mode);
+  }
+
+  getPermissionMode(): SdkOptions["permissionMode"] {
+    return this.permissionMode;
+  }
+
+  /**
+   * Replace the auto-approved tool list (passed to SDK as allowedTools).
+   */
+  setAutoApprovedTools(tools: string[]): void {
+    this.autoApprovedTools = [...tools];
+  }
+
   get signal(): AbortSignal {
     return this.abortController.signal;
   }
@@ -185,10 +274,12 @@ export class SdkAcpClient implements IAcpClient {
         cwd: this.cwd,
         pathToClaudeCodeExecutable: this.claudePath,
         includePartialMessages: true,
-        permissionMode: "default",
+        permissionMode: this.permissionMode,
         settingSources: ["user", "project", "local"],
-        // Auto-approve safe file operations; Bash and dangerous tools still go through canUseTool
-        allowedTools: ["Read", "Write", "Edit", "Glob", "Grep", "LS"],
+        // Auto-approve list configured by plugin settings; everything else
+        // routes through canUseTool. In bypassPermissions mode the SDK skips
+        // canUseTool entirely, making allowedTools moot — that's fine.
+        ...(this.autoApprovedTools.length > 0 ? { allowedTools: this.autoApprovedTools } : {}),
         ...(this.additionalDirs.length > 0 ? { additionalDirectories: this.additionalDirs } : {}),
       };
 
@@ -388,69 +479,14 @@ export class SdkAcpClient implements IAcpClient {
   }
 
   /**
-   * Resolve the `claude` CLI path across platforms and install methods.
-   * Order: env override → PATH lookup with augmented PATH → known install dirs.
+   * Resolve the `claude` CLI path. Tries (in order):
+   * plugin-settings override → env override → which/where → known install dirs.
    */
   private resolveClaudePath(): string | null {
-    const isWin = process.platform === "win32";
-    const home = homedir();
-    const binName = isWin ? "claude.exe" : "claude";
-
-    // 1. Explicit override via env (matches Anthropic docs convention)
-    const envOverride = process.env.CLAUDE_CODE_PATH || process.env.CLAUDE_BIN;
-    if (envOverride && existsSync(envOverride)) {
-      return envOverride;
+    if (this.claudePathOverride && existsSync(this.claudePathOverride)) {
+      return this.claudePathOverride;
     }
-
-    // 2. Build candidate list of known install locations
-    const candidates: string[] = isWin
-      ? [
-          join(home, ".local", "bin", "claude.exe"),
-          join(home, ".local", "bin", "claude.cmd"),
-          join(home, "AppData", "Local", "Programs", "claude", "claude.exe"),
-          join(home, "AppData", "Roaming", "npm", "claude.cmd"),
-          join(home, "AppData", "Roaming", "npm", "claude.exe"),
-          join(home, ".bun", "bin", "claude.exe"),
-          join(home, ".volta", "bin", "claude.exe"),
-        ]
-      : [
-          join(home, ".local", "bin", "claude"),
-          join(home, ".claude", "local", "claude"),
-          "/opt/homebrew/bin/claude",
-          "/usr/local/bin/claude",
-          "/usr/bin/claude",
-          join(home, ".bun", "bin", "claude"),
-          join(home, ".volta", "bin", "claude"),
-          join(home, ".npm-global", "bin", "claude"),
-          join(home, "bin", "claude"),
-        ];
-
-    // 3. Try shell lookup with PATH augmented by candidate dirs (Obsidian's
-    // Electron env doesn't load shell rc, so PATH may be minimal)
-    const extraPath = candidates.map((c) => dirname(c)).join(isWin ? ";" : ":");
-    const augmentedPath = `${process.env.PATH ?? ""}${isWin ? ";" : ":"}${extraPath}`;
-    try {
-      const cmd = isWin ? "where claude" : "which claude";
-      const out = execSync(cmd, {
-        encoding: "utf-8",
-        env: { ...process.env, PATH: augmentedPath },
-      })
-        .split(/\r?\n/)[0]
-        .trim();
-      if (out && existsSync(out)) {
-        return out;
-      }
-    } catch {
-      // fall through to direct candidate probing
-    }
-
-    // 4. Probe candidates directly
-    for (const p of candidates) {
-      if (existsSync(p)) return p;
-    }
-
-    void binName; // reserved for future error messaging
-    return null;
+    return findClaudeBinary();
   }
 
   /**
