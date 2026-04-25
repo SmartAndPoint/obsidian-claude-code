@@ -2182,6 +2182,29 @@
 }
 
 /* ===========================================================================
+   SettingTab — current-hotkey badge
+   =========================================================================== */
+.claude-code-hotkey-badge {
+  font-family: var(--font-monospace);
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  margin-right: 8px;
+}
+
+.claude-code-hotkey-badge.is-set {
+  color: var(--text-normal);
+  border-color: var(--interactive-accent);
+}
+
+.claude-code-hotkey-badge.is-unset {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ===========================================================================
    SettingTab — auto-approved tools table
    =========================================================================== */
 .claude-code-tools-table {

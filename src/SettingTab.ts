@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, Notice } from "obsidian";
+import { App, PluginSettingTab, Setting, Notice, Platform } from "obsidian";
 
 interface SettingsApi {
   open: () => void;
@@ -7,6 +7,34 @@ interface SettingsApi {
     setting?: { search?: { setValue: (v: string) => void; onChanged?: () => void } };
     searchComponent?: { setValue: (v: string) => void; onChanged?: () => void };
   };
+}
+
+interface HotkeyEntry {
+  modifiers: string[];
+  key: string;
+}
+
+interface HotkeyManager {
+  customKeys?: Record<string, HotkeyEntry[]>;
+  defaultKeys?: Record<string, HotkeyEntry[]>;
+  printHotkeyForCommand?: (id: string) => string;
+}
+
+const CYCLE_COMMAND_ID = "claude-code-integration:cycle-permission-mode";
+
+/**
+ * Format a hotkey entry for display. Falls back to a generic Mod token if the
+ * platform-specific symbol can't be resolved.
+ */
+function formatHotkey(entry: HotkeyEntry): string {
+  const isMac = Platform.isMacOS;
+  const symbols: Record<string, string> = isMac
+    ? { Mod: "⌘", Ctrl: "⌃", Alt: "⌥", Shift: "⇧", Meta: "⌘" }
+    : { Mod: "Ctrl", Ctrl: "Ctrl", Alt: "Alt", Shift: "Shift", Meta: "Win" };
+  const sep = isMac ? "" : "+";
+  const parts = entry.modifiers.map((m) => symbols[m] ?? m);
+  parts.push(entry.key.toUpperCase());
+  return parts.join(sep);
 }
 import type ClaudeCodePlugin from "./main";
 import { PERMISSION_MODES, KNOWN_TOOLS, type PermissionMode } from "./settings";
@@ -66,18 +94,25 @@ export class ClaudeCodeSettingTab extends PluginSettingTab {
     // ====================================================================
     new Setting(containerEl).setName("Permissions").setHeading();
 
-    new Setting(containerEl)
-      .setName("Cycle mode hotkey")
-      .setDesc(
-        // eslint-disable-next-line obsidianmd/ui/sentence-case -- mode names are proper nouns
-        "Bind a keyboard shortcut to cycle through Cautious → Auto-edit → Plan → Bypass. Opens Obsidian's hotkey settings pre-filtered to this command."
-      )
-      .addButton((btn) =>
-        btn
-          .setButtonText("Configure hotkey")
-          .setCta()
-          .onClick(() => this.openHotkeySettings())
-      );
+    const currentHotkey = this.getCurrentCycleHotkey();
+    const cycleHotkeySetting = new Setting(containerEl).setName("Cycle mode hotkey").setDesc(
+      // eslint-disable-next-line obsidianmd/ui/sentence-case -- mode names are proper nouns
+      "Bind a keyboard shortcut to cycle through Cautious → Auto-edit → Plan → Bypass."
+    );
+
+    // Visual badge showing the currently-bound hotkey (or "Not set").
+    const badge = cycleHotkeySetting.controlEl.createEl("kbd", {
+      cls: `claude-code-hotkey-badge ${currentHotkey ? "is-set" : "is-unset"}`,
+      text: currentHotkey ?? "Not set",
+    });
+    void badge;
+
+    cycleHotkeySetting.addButton((btn) =>
+      btn
+        .setButtonText(currentHotkey ? "Change" : "Configure hotkey")
+        .setCta()
+        .onClick(() => this.openHotkeySettings())
+    );
 
     new Setting(containerEl)
       .setName("Default permission mode")
@@ -145,6 +180,18 @@ export class ClaudeCodeSettingTab extends PluginSettingTab {
       });
       input.addEventListener("change", () => toggle(input.checked));
     }
+  }
+
+  /**
+   * Read the currently-bound hotkey for the cycle command from Obsidian's
+   * hotkey manager. Returns null if not bound.
+   */
+  private getCurrentCycleHotkey(): string | null {
+    const hk = (this.app as unknown as { hotkeyManager?: HotkeyManager }).hotkeyManager;
+    if (!hk) return null;
+    const entries = hk.customKeys?.[CYCLE_COMMAND_ID] ?? hk.defaultKeys?.[CYCLE_COMMAND_ID] ?? [];
+    if (entries.length === 0) return null;
+    return formatHotkey(entries[0]);
   }
 
   /**
