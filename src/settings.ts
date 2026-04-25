@@ -12,31 +12,32 @@ export type PermissionMode = "default" | "acceptEdits" | "plan" | "bypassPermiss
 export const PERMISSION_MODES: Array<{
   id: PermissionMode;
   label: string;
+  /** Lucide icon name (rendered via Obsidian setIcon). */
   icon: string;
   description: string;
 }> = [
   {
     id: "default",
     label: "Cautious",
-    icon: "🛡",
+    icon: "shield",
     description: "Ask before each tool call (terminal default)",
   },
   {
     id: "acceptEdits",
     label: "Auto-edit",
-    icon: "✅",
+    icon: "circle-check",
     description: "Auto-approve file edits; ask for Bash and other tools",
   },
   {
     id: "plan",
     label: "Plan",
-    icon: "📝",
+    icon: "clipboard-list",
     description: "Read-only planning mode; Claude proposes a plan before editing",
   },
   {
     id: "bypassPermissions",
     label: "Bypass",
-    icon: "🚨",
+    icon: "shield-alert",
     description: "Auto-approve EVERYTHING — use with care",
   },
 ];

@@ -2092,62 +2092,79 @@
 }
 
 /* ===========================================================================
-   Plugin status bar (under input row) + permission mode chip
+   Plugin status bar (under input row) + permission mode chip.
+   Visually mirrors Obsidian's native status bar — flat icon+label items,
+   no borders/pills, hover-only affordance.
    =========================================================================== */
 .chat-status-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 4px 0;
+  /* Match input row's horizontal padding (16px) so chip aligns with the
+     input field's left edge, plus extra bottom space so it's not glued to
+     the bottom of the pane. */
+  padding: 4px 16px 12px;
   gap: 8px;
   flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 .chat-status-bar-left,
 .chat-status-bar-right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
 .chat-mode-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: 12px;
+  gap: 5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
   font-size: 12px;
+  line-height: 1.4;
   cursor: pointer;
-  background: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
-  color: var(--text-normal);
   white-space: nowrap;
-  line-height: 1.2;
 }
 
 .chat-mode-chip:hover {
   background: var(--background-modifier-hover);
+  color: var(--text-normal);
 }
 
-.chat-mode-chip-arrow {
-  opacity: 0.6;
-  font-size: 10px;
+.chat-mode-chip-icon {
+  display: inline-flex;
+  align-items: center;
+  --icon-size: 14px;
 }
 
-/* Colored variants — use a tinted left border instead of full bg fill so the
-   label text stays readable on both light and dark themes. */
-.chat-mode-chip.mode-acceptEdits {
-  border-left: 3px solid var(--color-green);
+.chat-mode-chip-icon svg {
+  width: 14px;
+  height: 14px;
 }
 
-.chat-mode-chip.mode-plan {
-  border-left: 3px solid var(--color-orange);
+/* State color carried by the icon glyph; label stays in default text color
+   for readability across themes. */
+.chat-mode-chip.mode-acceptEdits .chat-mode-chip-icon {
+  color: var(--color-green);
+}
+
+.chat-mode-chip.mode-plan .chat-mode-chip-icon {
+  color: var(--color-orange);
 }
 
 .chat-mode-chip.mode-bypassPermissions {
-  border-left: 3px solid var(--color-red);
   color: var(--text-error);
+}
+
+.chat-mode-chip.mode-bypassPermissions .chat-mode-chip-icon {
+  color: var(--color-red);
 }
 
 /* ===========================================================================

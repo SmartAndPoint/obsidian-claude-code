@@ -1218,6 +1218,8 @@ export class ChatView extends ItemView {
 
   /**
    * Render the mode chip with current permission mode's icon + label.
+   * Styled like Obsidian's native status-bar items: flat, icon + text,
+   * hover affordance only.
    */
   private refreshModeChip(): void {
     if (!this.modeChipEl) return;
@@ -1235,9 +1237,9 @@ export class ChatView extends ItemView {
       "aria-label",
       `Permission mode: ${meta.label} — ${meta.description}. Click to change.`
     );
-    this.modeChipEl.createSpan({ text: `${meta.icon} ${meta.label}` });
-    const arrow = this.modeChipEl.createSpan({ cls: "chat-mode-chip-arrow" });
-    arrow.setText(" ▾");
+    const iconEl = this.modeChipEl.createSpan({ cls: "chat-mode-chip-icon" });
+    setIcon(iconEl, meta.icon);
+    this.modeChipEl.createSpan({ cls: "chat-mode-chip-label", text: meta.label });
   }
 
   /**
@@ -1248,7 +1250,8 @@ export class ChatView extends ItemView {
     const current = this.plugin.getPermissionMode();
     for (const mode of PERMISSION_MODES) {
       menu.addItem((item) => {
-        item.setTitle(`${mode.icon} ${mode.label}`);
+        item.setTitle(mode.label);
+        item.setIcon(mode.icon);
         if (mode.id === current) item.setChecked(true);
         item.onClick(() => {
           void this.handleModeChange(mode.id);

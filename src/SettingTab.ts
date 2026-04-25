@@ -64,7 +64,7 @@ export class ClaudeCodeSettingTab extends PluginSettingTab {
       )
       .addDropdown((dd) => {
         for (const mode of PERMISSION_MODES) {
-          dd.addOption(mode.id, `${mode.icon} ${mode.label} — ${mode.description}`);
+          dd.addOption(mode.id, `${mode.label} — ${mode.description}`);
         }
         dd.setValue(this.plugin.settings.defaultPermissionMode).onChange(async (value) => {
           this.plugin.settings.defaultPermissionMode = value as PermissionMode;
