@@ -264,17 +264,21 @@ Local git config for this repository:
 
 This does not affect global git settings.
 
-## Current Version: 1.5.2
+## Current Version: 1.8.0
 
 Features:
-- Full Claude Code agent integration
-- acp-core module with 209 tests
-- NativeAcpClient implementation
-- Slash command autocomplete (`/`)
-- File reference autocomplete (`[[`)
-- ESLint with obsidianmd rules
-- Permission system with inline cards
-- Diff viewer for file changes
-- Code viewer with syntax highlighting
+- Full Claude Code agent integration via @anthropic-ai/claude-agent-sdk
+- acp-core module with DI factory and 209 tests
+- SdkAcpClient adapter (works with Claude Pro/Max subscriptions)
+- Cross-platform `claude` CLI auto-detect (macOS/Linux/Windows)
+- Permission modes (Cautious/Auto-edit/Plan/Bypass) with chip + cycle command
+- Plugin status bar: mode chip + connection/activity indicator
+- SettingTab: CLI path override, default mode, auto-approved tools table,
+  hotkey configuration with current-binding display
+- Slash command autocomplete (`/`) and file reference autocomplete (`[[`)
+- Permission system with inline cards (Always allow / Allow / Reject)
+- Diff viewer for file changes; code viewer with syntax highlighting
+- Collapsible tool activity groups in chat
+- ESLint with obsidianmd rules (passes Review Bot)
 
 Organization: SmartAndPoint
