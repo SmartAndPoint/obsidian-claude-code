@@ -8,6 +8,7 @@
 
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import EventEmitter from "node:events";
 
@@ -81,23 +82,18 @@ export class SdkAcpClient implements IAcpClient {
   connect(sessionConfig: SessionConfig): Promise<Session> {
     this.cwd = sessionConfig.cwd;
 
-    // Resolve claude CLI path (import.meta.url is polyfilled in esbuild bundle)
-    const candidates = ["/opt/homebrew/bin/claude", "/usr/local/bin/claude", "/usr/bin/claude"];
-    try {
-      this.claudePath = execSync("which claude", {
-        encoding: "utf-8",
-        env: {
-          ...process.env,
-          PATH: process.env.PATH ?? "/opt/homebrew/bin:/usr/local/bin:/usr/bin",
-        },
-      }).trim();
-    } catch {
-      this.claudePath = candidates.find((p) => existsSync(p)) ?? null;
+    // Resolve claude CLI path (import.meta.url is polyfilled in esbuild bundle).
+    // Obsidian's Electron environment doesn't load shell rc files, so PATH is
+    // typically minimal — we have to probe known install locations explicitly.
+    const resolved = this.resolveClaudePath();
+    if (!resolved) {
+      return Promise.reject(
+        new Error(
+          "Claude CLI not found. Install via https://claude.ai/code, or set CLAUDE_CODE_PATH env var to the binary."
+        )
+      );
     }
-
-    if (!this.claudePath) {
-      return Promise.reject(new Error("Claude CLI not found. Install: https://claude.ai/code"));
-    }
+    this.claudePath = resolved;
 
     console.debug("[SdkAcpClient] Claude CLI path:", this.claudePath);
 
@@ -389,6 +385,72 @@ export class SdkAcpClient implements IAcpClient {
       this.currentQuery = null;
     }
     return Promise.resolve();
+  }
+
+  /**
+   * Resolve the `claude` CLI path across platforms and install methods.
+   * Order: env override → PATH lookup with augmented PATH → known install dirs.
+   */
+  private resolveClaudePath(): string | null {
+    const isWin = process.platform === "win32";
+    const home = homedir();
+    const binName = isWin ? "claude.exe" : "claude";
+
+    // 1. Explicit override via env (matches Anthropic docs convention)
+    const envOverride = process.env.CLAUDE_CODE_PATH || process.env.CLAUDE_BIN;
+    if (envOverride && existsSync(envOverride)) {
+      return envOverride;
+    }
+
+    // 2. Build candidate list of known install locations
+    const candidates: string[] = isWin
+      ? [
+          join(home, ".local", "bin", "claude.exe"),
+          join(home, ".local", "bin", "claude.cmd"),
+          join(home, "AppData", "Local", "Programs", "claude", "claude.exe"),
+          join(home, "AppData", "Roaming", "npm", "claude.cmd"),
+          join(home, "AppData", "Roaming", "npm", "claude.exe"),
+          join(home, ".bun", "bin", "claude.exe"),
+          join(home, ".volta", "bin", "claude.exe"),
+        ]
+      : [
+          join(home, ".local", "bin", "claude"),
+          join(home, ".claude", "local", "claude"),
+          "/opt/homebrew/bin/claude",
+          "/usr/local/bin/claude",
+          "/usr/bin/claude",
+          join(home, ".bun", "bin", "claude"),
+          join(home, ".volta", "bin", "claude"),
+          join(home, ".npm-global", "bin", "claude"),
+          join(home, "bin", "claude"),
+        ];
+
+    // 3. Try shell lookup with PATH augmented by candidate dirs (Obsidian's
+    // Electron env doesn't load shell rc, so PATH may be minimal)
+    const extraPath = candidates.map((c) => dirname(c)).join(isWin ? ";" : ":");
+    const augmentedPath = `${process.env.PATH ?? ""}${isWin ? ";" : ":"}${extraPath}`;
+    try {
+      const cmd = isWin ? "where claude" : "which claude";
+      const out = execSync(cmd, {
+        encoding: "utf-8",
+        env: { ...process.env, PATH: augmentedPath },
+      })
+        .split(/\r?\n/)[0]
+        .trim();
+      if (out && existsSync(out)) {
+        return out;
+      }
+    } catch {
+      // fall through to direct candidate probing
+    }
+
+    // 4. Probe candidates directly
+    for (const p of candidates) {
+      if (existsSync(p)) return p;
+    }
+
+    void binName; // reserved for future error messaging
+    return null;
   }
 
   /**
