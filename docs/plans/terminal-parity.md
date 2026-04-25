@@ -47,6 +47,25 @@ Files: `src/acp-core/adapters/sdk-client.ts`
     auto-approved tools (multi-checkbox: Read/Write/Edit/Glob/Grep/LS/Bash/WebFetch/WebSearch).
 - Register tab in `onload()`.
 
+### 1.2.1 Tools table layout (Phase 1 follow-up)
+
+User feedback: native checkboxes don't render well in Obsidian dark theme,
+and the controlEl-based layout collapses to a vertical list. Replace with
+a 4-column table below the description:
+
+| ☑ | Name | Description | Example |
+|---|------|-------------|---------|
+| ☑ | Read | Read file contents | `Read("/notes/idea.md")` |
+| ☐ | Write | Create/overwrite files | `Write("/path/file.ts", ...)` |
+
+Implementation:
+- Tool metadata moved into `KNOWN_TOOLS` array (id, label, desc, example).
+- Container is a CSS grid `auto auto 1fr 1fr` rendered in `containerEl`
+  (NOT inside Setting.controlEl) — full width.
+- Whole row is the click target; checkbox is visual-only.
+- Hover highlights the row; checked state uses `--interactive-accent` for
+  the checkbox fill so it's visible in both light and dark themes.
+
 ### 1.3 Mode chip in ChatView
 
 - Add chip element to ChatView header (next to model picker if present).
@@ -92,35 +111,107 @@ Files: `src/acp-core/adapters/sdk-client.ts`
   context so Claude continues with edits enabled.
 - On reject: send rejection back via `permissionResult`.
 
-### 2.2 Settings.local.json editor
+### 2.2 Settings.local.json editor (file-backed permission rules)
 
-- Generalize existing `addDirectoryToSettings` into `src/settingsFileManager.ts`
-  with `readLocalSettings()` / `mergeLocalSettings()` / `writeLocalSettings()`.
-- New SettingTab section **Additional Directories**:
-  - List current `additionalDirectories` from `<vault>/.claude/settings.local.json`.
-  - Buttons to add (folder picker / text input) and remove.
-  - On change → write back to file. SDK picks up on next query.
-- New SettingTab section **Permission rules** (settings.local.json):
-  - Show `permissions.allow` / `permissions.deny` arrays with edit UI.
-  - Persist to file.
+Generalize ad-hoc `addDirectoryToSettings` into `src/settingsFileManager.ts`
+with `readLocalSettings()` / `mergeLocalSettings()` / `writeLocalSettings()`.
 
-### 2.3 Mode-aware status banner
+Three SettingTab table sections, all reading/writing `<vault>/.claude/settings.local.json`:
 
-- When in Plan mode: persistent banner in chat "Planning mode — Claude will
-  not edit files until you approve the plan." Dismisses on mode switch.
-- When in Bypass mode: red banner "Bypass mode — all permissions auto-approved.
+#### File access table
+| Path / glob | Operations | Action | × |
+|---|---|---|---|
+| /Users/me/Vault/** | ☑Read ☑Write | ●Allow ○Deny | × |
+| /Users/me/.ssh/** | ☑Read ☑Write | ○Allow ●Deny | × |
+
+Each row maps to 1-3 entries in `permissions.allow|deny`: `Read(...)`, `Write(...)`,
+`Edit(...)`. Glob patterns supported (`**` recursive). Deny wins over Allow.
+"Browse folder…" button uses native Electron picker.
+
+#### Workspace dirs (`additionalDirectories`)
+Separate table — these expand SCOPE, not operations.
+
+#### Web access table
+| Domain | Tools | Action | × |
+|---|---|---|---|
+| docs.anthropic.com | ☑Fetch ☑Search | ●Allow | × |
+| github.com | ☑Fetch ☐Search | ●Allow | × |
+
+Maps to `WebFetch(domain:...)` / `WebSearch(domain:...)`. Note: no
+"write to URL" tool exists in core Claude — POSTs go via MCP servers (§2.5).
+
+#### Bash patterns (advanced, collapsed by default)
+| Pattern | Action | × |
+|---|---|---|
+| npm:* | ●Allow | × |
+| rm:* | ●Deny | × |
+
+### 2.3 Auto-persist in-session approvals
+
+When user picks "Always allow" in the chat permission card, the rule must
+persist across sessions automatically (not just current session).
+
+- Change `canUseTool` always-allow handler in `sdk-client.ts`: pass
+  `destination: "localSettings"` (not `"session"`) so SDK writes to
+  `.claude/settings.local.json` itself.
+- Verify `additionalDirectories` writes from the chat permission flow
+  also land in the file (already does via `addDirectoryToSettings` —
+  just confirm).
+- Reopen Settings tab → tables reflect newly added rules from chat.
+- Tables remain editable: user can revoke an auto-added rule via "×".
+
+### 2.4 Mode-aware status banner
+
+- Plan mode: persistent banner "Planning mode — Claude will not edit files
+  until you approve the plan." Dismisses on mode switch.
+- Bypass mode: red banner "Bypass mode — all permissions auto-approved.
   Use carefully."
 
-### 2.4 Verification
+### 2.5 MCP server management
+
+Adds a new top-level section to SettingTab:
+
+```
+MCP servers
+─────────────────────────────────────────────────────────────────
+Extend Claude with custom tools (databases, APIs, services).
+
+┌─────────────────┬──────────┬──────────────────────────┬───┬───┐
+│ Name            │ Type     │ Command / URL            │ ✓ │ × │
+├─────────────────┼──────────┼──────────────────────────┼───┼───┤
+│ obsidian-vault  │ stdio    │ npx mcp-obsidian         │ ✓ │ × │
+│ atlassian       │ http     │ https://mcp.atlas.../sse │ ✓ │ × │
+└─────────────────┴──────────┴──────────────────────────┴───┴───┘
+[+ Add server]    [Test all]
+```
+
+Per-server modal supports:
+- **Local stdio**: name, command, args[], env vars
+- **HTTPS/SSE**: name, URL, optional headers (Authorization: Bearer …),
+  optional OAuth token (paste-from-browser flow)
+- **Test connection** button: spawns/connects, runs `tools/list`, shows
+  result count or error inline.
+
+Storage: `.claude/settings.local.json → mcpServers` (Claude's standard
+schema). SDK auto-loads via `settingSources` — no extra wiring.
+
+### 2.6 Verification
 
 - `npm run build` clean.
-- Manual: plan mode → Claude produces plan → approve → continues with edits.
-- additionalDirectories list edits actually update file and unlock paths.
+- Plan mode → Claude proposes plan → approve → continues with edits.
+- File access table: add `/some/path/**` Allow Read+Write → operation
+  on that path no longer prompts.
+- "Always allow" in chat → row appears in File access table next
+  session restart.
+- Web access table: deny rule for `untrusted.com` blocks WebFetch.
+- additionalDirectories edits land in the file and unlock paths.
+- MCP local stdio: add server, "Test" → tool count returned.
+- MCP HTTPS: paste auth token → connection works.
 - Banners appear/disappear correctly on mode switch.
 
 ### Commit
 
-`feat: plan mode UX + settings.local.json editor`
+`feat: plan mode UX + settings.local.json editor + MCP server management`
 
 **STOP — user tests Phase 2.**
 
@@ -129,13 +220,12 @@ Files: `src/acp-core/adapters/sdk-client.ts`
 ## Out of scope (potential Phase 3+)
 
 - Subagent inline rendering inside Task tool cards
-- MCP server management UI
 - Hooks (PreToolUse/PostToolUse) editor
 - Output style picker
 - Memory files (CLAUDE.md hierarchy) editor
+- MCP OAuth flow with browser callback (Phase 2 supports paste-token only)
 
-These are valuable but heavier. Pick up after the user validates Phase 1+2 and
-decides which one matters most.
+Pick up after the user validates Phase 1+2.
 
 ---
 

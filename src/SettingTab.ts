@@ -72,31 +72,56 @@ export class ClaudeCodeSettingTab extends PluginSettingTab {
         });
       });
 
-    const toolsSetting = new Setting(containerEl).setName("Auto-approved tools").setDesc(
+    new Setting(containerEl).setName("Auto-approved tools").setDesc(
       // eslint-disable-next-line obsidianmd/ui/sentence-case -- tool names are proper nouns
       "Tools allowed without prompting, regardless of permission mode. Read-only tools (Read/Glob/Grep/LS) are safe defaults. Bash, WebFetch, WebSearch, and Write/Edit broaden auto-approval — enable carefully."
     );
 
-    const checkboxContainer = toolsSetting.controlEl.createDiv({
-      cls: "claude-code-tool-checkboxes",
-    });
+    this.renderToolsTable(containerEl);
+  }
+
+  /**
+   * Tools as a 4-col grid (checkbox / name / description / example) below
+   * the description so it spans the full container width. Each row is
+   * fully clickable to toggle.
+   */
+  private renderToolsTable(containerEl: HTMLElement): void {
+    const table = containerEl.createDiv({ cls: "claude-code-tools-table" });
+
+    // Header row
+    const head = table.createDiv({ cls: "claude-code-tools-row claude-code-tools-head" });
+    head.createDiv(); // checkbox column spacer
+    head.createDiv({ text: "Tool" });
+    head.createDiv({ text: "Description" });
+    head.createDiv({ text: "Example" });
 
     for (const tool of KNOWN_TOOLS) {
-      const label = checkboxContainer.createEl("label", { cls: "claude-code-tool-checkbox" });
-      const input = label.createEl("input", { type: "checkbox" });
-      input.checked = this.plugin.settings.autoApprovedTools.includes(tool);
-      label.createSpan({ text: tool });
+      const row = table.createDiv({ cls: "claude-code-tools-row" });
 
-      input.addEventListener("change", () => {
+      const checkCell = row.createDiv({ cls: "claude-code-tools-check" });
+      const input = checkCell.createEl("input", { type: "checkbox" });
+      input.checked = this.plugin.settings.autoApprovedTools.includes(tool.id);
+
+      row.createDiv({ cls: "claude-code-tools-name", text: tool.id });
+      row.createDiv({ cls: "claude-code-tools-desc", text: tool.description });
+      row.createEl("code", { cls: "claude-code-tools-example", text: tool.example });
+
+      const toggle = (next?: boolean): void => {
+        input.checked = next ?? !input.checked;
         const set = new Set(this.plugin.settings.autoApprovedTools);
-        if (input.checked) {
-          set.add(tool);
-        } else {
-          set.delete(tool);
-        }
+        if (input.checked) set.add(tool.id);
+        else set.delete(tool.id);
         this.plugin.settings.autoApprovedTools = Array.from(set);
         void this.plugin.saveSettings();
+      };
+
+      // Whole-row click toggles the checkbox (except clicks on the input
+      // itself — the browser already toggles it via change event below).
+      row.addEventListener("click", (e) => {
+        if (e.target === input) return;
+        toggle();
       });
+      input.addEventListener("change", () => toggle(input.checked));
     }
   }
 }

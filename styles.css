@@ -2137,25 +2137,79 @@
 }
 
 /* ===========================================================================
-   SettingTab — auto-approved tools checkbox grid
+   SettingTab — auto-approved tools table
    =========================================================================== */
-.claude-code-tool-checkboxes {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-  gap: 6px 12px;
-  width: 100%;
-  margin-top: 6px;
+.claude-code-tools-table {
+  display: flex;
+  flex-direction: column;
+  margin: 8px 0 16px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  overflow: hidden;
+  font-size: 13px;
 }
 
-.claude-code-tool-checkbox {
-  display: inline-flex;
+.claude-code-tools-row {
+  display: grid;
+  grid-template-columns: 32px minmax(80px, auto) minmax(160px, 1fr) minmax(180px, 1fr);
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
+  gap: 12px;
+  padding: 8px 12px;
   cursor: pointer;
+  border-bottom: 1px solid var(--background-modifier-border);
   user-select: none;
 }
 
-.claude-code-tool-checkbox input[type="checkbox"] {
+.claude-code-tools-row:last-child {
+  border-bottom: none;
+}
+
+.claude-code-tools-row:hover:not(.claude-code-tools-head) {
+  background: var(--background-modifier-hover);
+}
+
+.claude-code-tools-head {
+  background: var(--background-secondary);
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: default;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.claude-code-tools-check {
+  display: flex;
+  justify-content: center;
+}
+
+.claude-code-tools-check input[type="checkbox"] {
+  /* Force visible styling in dark theme too */
+  width: 16px;
+  height: 16px;
   margin: 0;
+  cursor: pointer;
+  accent-color: var(--interactive-accent);
+}
+
+.claude-code-tools-name {
+  font-family: var(--font-monospace);
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.claude-code-tools-desc {
+  color: var(--text-normal);
+}
+
+.claude-code-tools-example {
+  font-family: var(--font-monospace);
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--background-secondary);
+  padding: 2px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

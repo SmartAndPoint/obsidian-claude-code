@@ -41,17 +41,23 @@ export const PERMISSION_MODES: Array<{
   },
 ];
 
-export const KNOWN_TOOLS = [
-  "Read",
-  "Write",
-  "Edit",
-  "Glob",
-  "Grep",
-  "LS",
-  "Bash",
-  "WebFetch",
-  "WebSearch",
-  "Task",
+export interface ToolDescriptor {
+  id: string;
+  description: string;
+  example: string;
+}
+
+export const KNOWN_TOOLS: readonly ToolDescriptor[] = [
+  { id: "Read", description: "Read file contents", example: 'Read("/notes/idea.md")' },
+  { id: "Write", description: "Create or overwrite files", example: 'Write("/path/file.ts", ...)' },
+  { id: "Edit", description: "Modify a file in place", example: 'Edit("/path/file.ts", ...)' },
+  { id: "Glob", description: "Find files by pattern", example: 'Glob("**/*.ts")' },
+  { id: "Grep", description: "Search file contents", example: 'Grep("regex", "/dir/")' },
+  { id: "LS", description: "List directory entries", example: 'LS("/path/")' },
+  { id: "Bash", description: "Run shell commands", example: 'Bash("npm test")' },
+  { id: "WebFetch", description: "Fetch URL content", example: 'WebFetch("https://docs...")' },
+  { id: "WebSearch", description: "Search the web", example: 'WebSearch("obsidian plugin")' },
+  { id: "Task", description: "Spawn a sub-agent", example: 'Task("explore", "find X")' },
 ] as const;
 
 export interface PluginSettings {
