@@ -4,7 +4,12 @@ import type { SendMessageOptions } from "./acp-core";
 import { SdkAcpClient } from "./acp-core/adapters";
 import { ChatView, CHAT_VIEW_TYPE } from "./views/ChatView";
 import { ClaudeCodeSettingTab } from "./SettingTab";
-import { DEFAULT_SETTINGS, type PluginSettings, type PermissionMode } from "./settings";
+import {
+  DEFAULT_SETTINGS,
+  PERMISSION_MODES,
+  type PluginSettings,
+  type PermissionMode,
+} from "./settings";
 
 export default class ClaudeCodePlugin extends Plugin {
   settings: PluginSettings = { ...DEFAULT_SETTINGS };
@@ -174,6 +179,15 @@ export default class ClaudeCodePlugin extends Plugin {
       },
     });
 
+    // Cycle permission mode (terminal-parity Shift+Tab analogue).
+    // No default hotkey per Obsidian community-plugin policy — user binds
+    // their preferred shortcut (e.g. Cmd/Ctrl+Shift+M) in Settings → Hotkeys.
+    this.addCommand({
+      id: "cycle-permission-mode",
+      name: "Cycle permission mode",
+      callback: () => void this.cyclePermissionMode(),
+    });
+
     // Add ribbon icon
     this.addRibbonIcon("bot", "Claude", () => {
       void this.activateChatView();
@@ -232,6 +246,22 @@ export default class ClaudeCodePlugin extends Plugin {
 
   getPermissionMode(): PermissionMode {
     return this.settings.lastUsedPermissionMode;
+  }
+
+  /**
+   * Cycle to the next permission mode (Cautious → Auto-edit → Plan →
+   * Bypass → Cautious). Mirrors the terminal `Shift+Tab` cycle.
+   */
+  async cyclePermissionMode(): Promise<void> {
+    const current = this.settings.lastUsedPermissionMode;
+    const idx = PERMISSION_MODES.findIndex((m) => m.id === current);
+    const next = PERMISSION_MODES[(idx + 1) % PERMISSION_MODES.length];
+    await this.setPermissionMode(next.id);
+    const chatView = this.getChatView();
+    if (chatView) {
+      chatView.refreshModeChip();
+      new Notice(`Permission mode: ${next.label}`, 1500);
+    }
   }
 
   async activateChatView(): Promise<void> {

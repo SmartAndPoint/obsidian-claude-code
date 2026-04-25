@@ -1219,9 +1219,10 @@ export class ChatView extends ItemView {
   /**
    * Render the mode chip with current permission mode's icon + label.
    * Styled like Obsidian's native status-bar items: flat, icon + text,
-   * hover affordance only.
+   * hover affordance only. Public so the plugin can refresh after a
+   * hotkey-driven mode cycle.
    */
-  private refreshModeChip(): void {
+  refreshModeChip(): void {
     if (!this.modeChipEl) return;
     const current = this.plugin.getPermissionMode();
     const meta = PERMISSION_MODES.find((m) => m.id === current) ?? PERMISSION_MODES[0];
