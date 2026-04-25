@@ -2092,21 +2092,38 @@
 }
 
 /* ===========================================================================
-   Permission mode chip (terminal-parity)
+   Plugin status bar (under input row) + permission mode chip
    =========================================================================== */
+.chat-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 4px 0;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chat-status-bar-left,
+.chat-status-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .chat-mode-chip {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 3px 8px;
+  padding: 4px 10px;
   border-radius: 12px;
   font-size: 12px;
   cursor: pointer;
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   color: var(--text-normal);
-  margin-left: 8px;
   white-space: nowrap;
+  line-height: 1.2;
 }
 
 .chat-mode-chip:hover {
@@ -2118,22 +2135,19 @@
   font-size: 10px;
 }
 
+/* Colored variants — use a tinted left border instead of full bg fill so the
+   label text stays readable on both light and dark themes. */
 .chat-mode-chip.mode-acceptEdits {
-  background: var(--background-modifier-success);
-  color: var(--text-success);
-  border-color: transparent;
+  border-left: 3px solid var(--color-green);
 }
 
 .chat-mode-chip.mode-plan {
-  background: var(--background-modifier-warning);
-  color: var(--text-warning);
-  border-color: transparent;
+  border-left: 3px solid var(--color-orange);
 }
 
 .chat-mode-chip.mode-bypassPermissions {
-  background: var(--background-modifier-error);
+  border-left: 3px solid var(--color-red);
   color: var(--text-error);
-  border-color: transparent;
 }
 
 /* ===========================================================================

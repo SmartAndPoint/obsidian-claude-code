@@ -169,11 +169,6 @@ export class ChatView extends ItemView {
     // Session info (shown when session is active)
     this.sessionInfoEl = titleRow.createDiv({ cls: "chat-session-info is-hidden" });
 
-    // Permission mode chip (terminal-parity: mirrors Shift+Tab cycling)
-    this.modeChipEl = titleRow.createEl("button", { cls: "chat-mode-chip" });
-    this.modeChipEl.addEventListener("click", (e) => this.openModeMenu(e));
-    this.refreshModeChip();
-
     this.statusIndicator = header.createDiv({ cls: "chat-status" });
     this.updateStatus("disconnected");
 
@@ -317,6 +312,16 @@ export class ChatView extends ItemView {
     this.sendButton = inputRow.createEl("button", { cls: "chat-send-btn" });
     setIcon(this.sendButton, "send");
     this.sendButton.addEventListener("click", () => void this.handleSend());
+
+    // Plugin status bar (under the input row): permission mode chip on the
+    // left; right side reserved for future signals (active subagents, etc.).
+    const statusBar = this.inputContainer.createDiv({ cls: "chat-status-bar" });
+    const statusBarLeft = statusBar.createDiv({ cls: "chat-status-bar-left" });
+    statusBar.createDiv({ cls: "chat-status-bar-right" });
+
+    this.modeChipEl = statusBarLeft.createEl("button", { cls: "chat-mode-chip" });
+    this.modeChipEl.addEventListener("click", (e) => this.openModeMenu(e));
+    this.refreshModeChip();
 
     // File suggestion for [[ syntax
     this.fileSuggest = new FileSuggest(this.app, this.inputContainer, this.textarea, (path) => {
