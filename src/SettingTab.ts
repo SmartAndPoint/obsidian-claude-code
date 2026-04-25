@@ -53,6 +53,18 @@ export class ClaudeCodeSettingTab extends PluginSettingTab {
     containerEl.empty();
 
     // ====================================================================
+    // About / release notes
+    // ====================================================================
+    new Setting(containerEl)
+      .setName(`Plugin version ${this.plugin.manifest.version}`)
+      .setDesc(
+        "Open the release notes for this version (also shown automatically after every update)."
+      )
+      .addButton((btn) =>
+        btn.setButtonText("View release notes").onClick(() => this.plugin.showReleaseNotes())
+      );
+
+    // ====================================================================
     // Claude CLI section
     // ====================================================================
     new Setting(containerEl).setName("Claude CLI").setHeading();

@@ -2281,3 +2281,40 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ===========================================================================
+   Release notes modal — shown after plugin updates
+   =========================================================================== */
+.claude-code-release-modal .modal {
+  max-width: 720px;
+}
+
+.claude-code-release-body {
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 4px 8px 16px;
+  line-height: 1.5;
+}
+
+.claude-code-release-body h1,
+.claude-code-release-body h2,
+.claude-code-release-body h3 {
+  margin-top: 1.2em;
+  margin-bottom: 0.4em;
+}
+
+.claude-code-release-body h1:first-child {
+  margin-top: 0;
+}
+
+.claude-code-release-body code {
+  font-size: 0.9em;
+}
+
+.claude-code-release-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--background-modifier-border);
+}

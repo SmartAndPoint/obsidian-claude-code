@@ -76,6 +76,13 @@ export interface PluginSettings {
    * Passed to SDK as `allowedTools`.
    */
   autoApprovedTools: string[];
+
+  /**
+   * Last plugin version the user has seen release notes for. Empty means
+   * fresh install — we skip the auto-modal in that case to avoid greeting
+   * new users with what's-new content they have no context for.
+   */
+  lastSeenVersion: string;
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -83,4 +90,5 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   defaultPermissionMode: "default",
   lastUsedPermissionMode: "default",
   autoApprovedTools: ["Read", "Glob", "Grep", "LS"],
+  lastSeenVersion: "",
 };

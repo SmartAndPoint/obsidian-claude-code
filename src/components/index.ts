@@ -21,3 +21,4 @@ export { SelectionChipsContainer, type FileSelection } from "./SelectionChip";
 export { formatPath, createClickablePath, formatAgentPaths, openFileAtLine } from "./PathFormatter";
 export { SessionPickerModal, type SessionPickerResult } from "./SessionPickerModal";
 export { ToolActivityGroup } from "./ToolActivityGroup";
+export { ReleaseNotesModal } from "./ReleaseNotesModal";

@@ -4,6 +4,8 @@ import type { SendMessageOptions } from "./acp-core";
 import { SdkAcpClient } from "./acp-core/adapters";
 import { ChatView, CHAT_VIEW_TYPE } from "./views/ChatView";
 import { ClaudeCodeSettingTab } from "./SettingTab";
+import { ReleaseNotesModal } from "./components";
+import { getReleaseNotes, LATEST_RELEASE_VERSION } from "./releaseNotes";
 import {
   DEFAULT_SETTINGS,
   PERMISSION_MODES,
@@ -32,6 +34,10 @@ export default class ClaudeCodePlugin extends Plugin {
     console.debug("Loading Claude Code Integration plugin");
     await this.loadSettings();
     this.addSettingTab(new ClaudeCodeSettingTab(this.app, this));
+
+    // Show release notes modal once after a version bump. Skipped on first
+    // install (lastSeenVersion === "") so new users aren't ambushed.
+    void this.maybeShowReleaseNotes();
 
     // Register chat view - don't store reference to avoid memory leaks
     this.registerView(CHAT_VIEW_TYPE, (leaf) => new ChatView(leaf, this));
@@ -202,6 +208,48 @@ export default class ClaudeCodePlugin extends Plugin {
   async loadSettings(): Promise<void> {
     const data = (await this.loadData()) as Partial<PluginSettings> | null;
     this.settings = { ...DEFAULT_SETTINGS, ...(data ?? {}) };
+  }
+
+  /**
+   * Compare current plugin version against the last one the user has seen
+   * notes for. Show the release-notes modal if it's an update (not a fresh
+   * install) and we have notes for the current version on file.
+   */
+  private async maybeShowReleaseNotes(): Promise<void> {
+    const current = this.manifest.version;
+    const lastSeen = this.settings.lastSeenVersion;
+
+    // Fresh install — record the current version silently and bail.
+    if (!lastSeen) {
+      this.settings.lastSeenVersion = current;
+      await this.saveData(this.settings);
+      return;
+    }
+
+    // Already seen this version.
+    if (lastSeen === current) return;
+
+    const notes = getReleaseNotes(current) ?? getReleaseNotes(LATEST_RELEASE_VERSION);
+    if (!notes) {
+      // No notes bundled — just update the marker so we don't keep checking.
+      this.settings.lastSeenVersion = current;
+      await this.saveData(this.settings);
+      return;
+    }
+
+    new ReleaseNotesModal(this.app, current, notes).open();
+    this.settings.lastSeenVersion = current;
+    await this.saveData(this.settings);
+  }
+
+  /**
+   * Open the release notes modal on demand (called from SettingTab).
+   */
+  showReleaseNotes(): void {
+    const current = this.manifest.version;
+    const notes =
+      getReleaseNotes(current) ?? getReleaseNotes(LATEST_RELEASE_VERSION) ?? "_No notes._";
+    new ReleaseNotesModal(this.app, current, notes).open();
   }
 
   async saveSettings(): Promise<void> {
